@@ -1,3 +1,5 @@
+import os
+
 import torch
 
 from params_proto.neo_proto import ParamsProto, PrefixProto, Proto
@@ -6,7 +8,7 @@ class Config(ParamsProto):
     # misc
     seed = 100
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    bucket = '/home/michiel/Documents/MTP/code/decision-diffuser/code/weights/'
+    bucket = os.path.normpath(os.path.join(os.getcwd(), os.pardir, 'weights'))
     dataset = 'hopper-medium-expert-v2'
 
     ## model
