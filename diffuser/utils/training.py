@@ -4,6 +4,9 @@ import numpy as np
 import torch
 import einops
 import pdb
+
+import wandb
+
 import diffuser
 from copy import deepcopy
 
@@ -107,6 +110,7 @@ class Trainer(object):
     #-----------------------------------------------------------------------------#
 
     def train(self, n_train_steps):
+        wandb.watch(self.model, self.model.loss, log="all", log_freq=10)
 
         timer = Timer()
         for step in range(n_train_steps):
@@ -127,6 +131,8 @@ class Trainer(object):
                 self.save()
 
             if self.step % self.log_freq == 0:
+                wandb.log({"loss": loss}, step=self.step)
+
                 infos_str = ' | '.join([f'{key}: {val:8.4f}' for key, val in infos.items()])
                 logger.print(f'{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}')
                 metrics = {k:v.detach().item() for k, v in infos.items()}

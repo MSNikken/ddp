@@ -511,7 +511,7 @@ class GaussianInvDynDiffusion(nn.Module):
             a_t = a_t.reshape(-1, self.action_dim)
             if self.ar_inv:
                 loss = self.inv_model.calc_loss(x_comb_t, a_t)
-                info = {'a0_loss':loss}
+                info = {'a0_loss': loss}
             else:
                 pred_a_t = self.inv_model(x_comb_t)
                 loss = F.mse_loss(pred_a_t, a_t)

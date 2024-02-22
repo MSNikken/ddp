@@ -6,13 +6,17 @@ if __name__ == '__main__':
     from config.locomotion_config import Config
     from params_proto.neo_hyper import Sweep
 
+    import wandb
+    wandb.login()
+
     sweep = Sweep(RUN, Config).load("default_inv.jsonl")
 
     for kwargs in sweep:
-        logger.print(RUN.prefix, color='green')
-        jaynes.config("local")
-        #thunk = instr(main, **kwargs)
-        #jaynes.run(thunk)
-        main(**kwargs)
+        with wandb.init(project="diffusion",config=kwargs):
+            logger.print(RUN.prefix, color='green')
+            jaynes.config("local")
+            #thunk = instr(main, **kwargs)
+            #jaynes.run(thunk)
+            main(**kwargs)
 
     jaynes.listen()
