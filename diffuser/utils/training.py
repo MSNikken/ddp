@@ -13,7 +13,7 @@ from copy import deepcopy
 from .arrays import batch_to_device, to_np, to_device, apply_dict
 from .timer import Timer
 from .cloud import sync_logs
-from ml_logger import logger
+#from ml_logger import logger
 
 def cycle(dl):
     while True:
@@ -110,7 +110,7 @@ class Trainer(object):
     #-----------------------------------------------------------------------------#
 
     def train(self, n_train_steps):
-        wandb.watch(self.model, self.model.loss, log="all", log_freq=10)
+        wandb.watch(self.model, log="all", log_freq=10)
 
         timer = Timer()
         for step in range(n_train_steps):
@@ -131,14 +131,13 @@ class Trainer(object):
                 self.save()
 
             if self.step % self.log_freq == 0:
-                wandb.log({"loss": loss}, step=self.step)
-
                 infos_str = ' | '.join([f'{key}: {val:8.4f}' for key, val in infos.items()])
-                logger.print(f'{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}')
+                print(f'step: {self.step}| loss: {loss:8.4f} | {infos_str} | t: {timer():8.4f}')
                 metrics = {k:v.detach().item() for k, v in infos.items()}
-                metrics['steps'] = self.step
                 metrics['loss'] = loss.detach().item()
-                logger.log_metrics_summary(metrics, default_stats='mean')
+
+                # Note: loss is divided by gradient_accumulate_every
+                wandb.log({**metrics, **{"loss": loss}}, step=self.step)
 
             if self.step == 0 and self.sample_freq:
                 self.render_reference(self.n_reference)
@@ -163,7 +162,7 @@ class Trainer(object):
             'model': self.model.state_dict(),
             'ema': self.ema_model.state_dict()
         }
-        savepath = os.path.join(self.bucket, logger.prefix, 'checkpoint')
+        savepath = os.path.join(self.bucket, 'checkpoint')
         os.makedirs(savepath, exist_ok=True)
         # logger.save_torch(data, savepath)
         if self.save_checkpoints:
@@ -171,13 +170,13 @@ class Trainer(object):
         else:
             savepath = os.path.join(savepath, 'state.pt')
         torch.save(data, savepath)
-        logger.print(f'[ utils/training ] Saved model to {savepath}')
+        print(f'[ utils/training ] Saved model to {savepath}')
 
     def load(self):
         '''
             loads model and ema from disk
         '''
-        loadpath = os.path.join(self.bucket, logger.prefix, f'checkpoint/state.pt')
+        loadpath = os.path.join(self.bucket, f'checkpoint/state.pt')
         # data = logger.load_torch(loadpath)
         data = torch.load(loadpath)
 

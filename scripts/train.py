@@ -2,22 +2,9 @@ import diffuser.utils as utils
 import torch
 
 def main(**deps):
-    from ml_logger import logger, RUN
     from config.locomotion_config import Config
 
-    RUN._update(deps)
     Config._update(deps)
-
-    # logger.remove('*.pkl')
-    # logger.remove("traceback.err")
-    logger.log_params(Config=vars(Config), RUN=vars(RUN))
-    logger.log_text("""
-                    charts:
-                    - yKey: loss
-                      xKey: steps
-                    - yKey: a0_loss
-                      xKey: steps
-                    """, filename=".charts.yml", dedent=True, overwrite=True)
 
     torch.backends.cudnn.benchmark = True
     utils.set_seed(Config.seed)
@@ -158,11 +145,11 @@ def main(**deps):
 
     utils.report_parameters(model)
 
-    logger.print('Testing forward...', end=' ', flush=True)
+    print('Testing forward/backward...', end=' ', flush=True)
     batch = utils.batchify(dataset[0], Config.device)
     loss, _ = diffusion.loss(*batch)
     loss.backward()
-    logger.print('✓')
+    print('✓')
 
     # -----------------------------------------------------------------------------#
     # --------------------------------- main loop ---------------------------------#
@@ -171,6 +158,6 @@ def main(**deps):
     n_epochs = int(Config.n_train_steps // Config.n_steps_per_epoch)
 
     for i in range(n_epochs):
-        logger.print(f'Epoch {i} / {n_epochs} | {logger.prefix}')
+        print(f'Epoch {i} / {n_epochs}')
         trainer.train(n_train_steps=Config.n_steps_per_epoch)
 
