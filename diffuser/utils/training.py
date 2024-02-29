@@ -137,7 +137,7 @@ class Trainer(object):
                 metrics['loss'] = loss.detach().item()
 
                 # Note: loss is divided by gradient_accumulate_every
-                wandb.log({**metrics, **{"loss": loss}}, step=self.step)
+                wandb.log({**metrics, **{"loss": loss}, 'step': self.step})
 
             if self.step == 0 and self.sample_freq:
                 self.render_reference(self.n_reference)
