@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import skvideo.io
-from ml_logger import logger
 
 def _make_dir(filename):
     folder = os.path.dirname(filename)

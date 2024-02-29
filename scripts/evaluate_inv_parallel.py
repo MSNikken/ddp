@@ -1,5 +1,4 @@
 import diffuser.utils as utils
-from ml_logger import logger
 import torch
 from copy import deepcopy
 import numpy as np
@@ -8,17 +7,12 @@ import gym
 from config.locomotion_config import Config
 from diffuser.utils.arrays import to_torch, to_np, to_device
 from diffuser.datasets.d4rl import suppress_output
+import wandb
 
 def evaluate(**deps):
-    from ml_logger import logger, RUN
     from config.locomotion_config import Config
 
-    RUN._update(deps)
     Config._update(deps)
-
-    logger.remove('*.pkl')
-    logger.remove("traceback.err")
-    logger.log_params(Config=vars(Config), RUN=vars(RUN))
 
     Config.device = 'cuda'
 
@@ -27,7 +21,7 @@ def evaluate(**deps):
     else:
         prefix = f'predict_x0_{Config.n_diffusion_steps}_1000000.0'
 
-    loadpath = os.path.join(Config.bucket, logger.prefix, 'checkpoint')
+    loadpath = os.path.join(Config.bucket, 'checkpoint')
     
     if Config.save_checkpoints:
         loadpath = os.path.join(loadpath, f'state_{self.step}.pt')
@@ -122,7 +116,7 @@ def evaluate(**deps):
     model = model_config()
     diffusion = diffusion_config(model)
     trainer = trainer_config(diffusion, dataset, renderer)
-    logger.print(utils.report_parameters(model), color='green')
+    print(utils.report_parameters(model))
     trainer.step = state_dict['step']
     trainer.model.load_state_dict(state_dict['model'])
     trainer.ema_model.load_state_dict(state_dict['ema'])
@@ -171,7 +165,7 @@ def evaluate(**deps):
                 else:
                     dones[i] = 1
                     episode_rewards[i] += this_reward
-                    logger.print(f"Episode ({i}): {episode_rewards[i]}", color='green')
+                    print(f"Episode ({i}): {episode_rewards[i]}")
             else:
                 if dones[i] == 1:
                     pass
@@ -187,5 +181,5 @@ def evaluate(**deps):
     renderer.composite(savepath, recorded_obs)
     episode_rewards = np.array(episode_rewards)
 
-    logger.print(f"average_ep_reward: {np.mean(episode_rewards)}, std_ep_reward: {np.std(episode_rewards)}", color='green')
-    logger.log_metrics_summary({'average_ep_reward':np.mean(episode_rewards), 'std_ep_reward':np.std(episode_rewards)})
+    print(f"average_ep_reward: {np.mean(episode_rewards)}, std_ep_reward: {np.std(episode_rewards)}")
+    wandb.log({'average_ep_reward': np.mean(episode_rewards), 'std_ep_reward': np.std(episode_rewards)})
