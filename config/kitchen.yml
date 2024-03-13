@@ -1,0 +1,2 @@
+dataset: 'kitchen-complete-v0'
+preprocess_fns: ['joints_to_pose']

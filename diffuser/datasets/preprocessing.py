@@ -1,17 +1,21 @@
+import os
+
 import gym
 import numpy as np
 import einops
+import torch
 from scipy.spatial.transform import Rotation as R
 import pdb
 
 from .d4rl import load_environment
+from ..models.robot import Robot
 
-#-----------------------------------------------------------------------------#
-#-------------------------------- general api --------------------------------#
-#-----------------------------------------------------------------------------#
+
+# -----------------------------------------------------------------------------#
+# -------------------------------- general api --------------------------------#
+# -----------------------------------------------------------------------------#
 
 def compose(*fns):
-
     def _fn(x):
         for fn in fns:
             x = fn(x)
@@ -19,19 +23,22 @@ def compose(*fns):
 
     return _fn
 
+
 def get_preprocess_fn(fn_names, env):
     fns = [eval(name)(env) for name in fn_names]
     return compose(*fns)
+
 
 def get_policy_preprocess_fn(fn_names):
     fns = [eval(name) for name in fn_names]
     return compose(*fns)
 
-#-----------------------------------------------------------------------------#
-#-------------------------- preprocessing functions --------------------------#
-#-----------------------------------------------------------------------------#
 
-#------------------------ @TODO: remove some of these ------------------------#
+# -----------------------------------------------------------------------------#
+# -------------------------- preprocessing functions --------------------------#
+# -----------------------------------------------------------------------------#
+
+# ------------------------ @TODO: remove some of these ------------------------#
 
 def arctanh_actions(*args, **kwargs):
     epsilon = 1e-4
@@ -46,8 +53,8 @@ def arctanh_actions(*args, **kwargs):
 
     return _fn
 
-def add_deltas(env):
 
+def add_deltas(env):
     def _fn(dataset):
         deltas = dataset['next_observations'] - dataset['observations']
         dataset['deltas'] = deltas
@@ -62,7 +69,7 @@ def maze2d_set_terminals(env):
     threshold = 0.5
 
     def _fn(dataset):
-        xy = dataset['observations'][:,:2]
+        xy = dataset['observations'][:, :2]
         distances = np.linalg.norm(xy - goal, axis=-1)
         at_goal = distances < threshold
         timeouts = np.zeros_like(dataset['timeouts'])
@@ -86,7 +93,37 @@ def maze2d_set_terminals(env):
     return _fn
 
 
-#-------------------------- block-stacking --------------------------#
+# -------------------------- end-effector representation in SE(3) ------------#
+
+def joints_to_pose(env):
+    import pypose as pp
+    xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../environments/franka/franka_panda.xml')
+    robot = Robot(xml_path)
+
+    def _fn(dataset):
+        qpos = dataset['observations'][:, :robot.njoints]
+        qvel = dataset['observations'][:, robot.njoints:2 * robot.njoints]
+
+        # Tpos = pp.LieTensor(torch.empty((qpos.shape[0], 7)), ltype=pp.SE3_type)
+        # Tposdot = torch.empty((qpos.shape[0], 6))
+        Tpos = np.empty((qpos.shape[0], 7))
+        Tposdot = np.empty((qpos.shape[0], 6))
+
+        for i in range(Tpos.shape[0]):
+            xpos, xquat = robot.fwd_kinematics(qpos[i, :])
+            lin_vel, rot_vel = robot.fwd_diff_kinematics(qpos[i, :], qvel[i, :])
+
+            # Tpos[i] = torch.from_numpy(np.hstack((xpos[robot.end_effector,:], xquat[robot.end_effector,:])))
+            # Tposdot[i] = torch.from_numpy(np.hstack((lin_vel, rot_vel)))
+            Tpos[i] = np.hstack((xpos[robot.end_effector, :], xquat[robot.end_effector, :]))
+            Tposdot[i] = np.hstack((lin_vel, rot_vel))
+
+        dataset['pose'] = Tpos
+        dataset['vel'] = Tposdot
+        return dataset
+    return _fn
+
+# -------------------------- block-stacking --------------------------#
 
 def blocks_quat_to_euler(observations):
     '''
@@ -132,6 +169,7 @@ def blocks_quat_to_euler(observations):
 
     return X
 
+
 def blocks_euler_to_quat_2d(observations):
     robot_dim = 7
     block_dim = 10
@@ -164,14 +202,15 @@ def blocks_euler_to_quat_2d(observations):
 
     return X
 
+
 def blocks_euler_to_quat(paths):
     return np.stack([
         blocks_euler_to_quat_2d(path)
         for path in paths
     ], axis=0)
 
-def blocks_process_cubes(env):
 
+def blocks_process_cubes(env):
     def _fn(dataset):
         for key in ['observations', 'next_observations']:
             dataset[key] = blocks_quat_to_euler(dataset[key])
@@ -179,14 +218,15 @@ def blocks_process_cubes(env):
 
     return _fn
 
-def blocks_remove_kuka(env):
 
+def blocks_remove_kuka(env):
     def _fn(dataset):
         for key in ['observations', 'next_observations']:
             dataset[key] = dataset[key][:, 7:]
         return dataset
 
     return _fn
+
 
 def blocks_add_kuka(observations):
     '''
@@ -199,6 +239,7 @@ def blocks_add_kuka(observations):
         observations,
     ], axis=-1)
     return observations
+
 
 def blocks_cumsum_quat(deltas):
     '''
@@ -230,6 +271,7 @@ def blocks_cumsum_quat(deltas):
         cumsum[:, :, start:end] = cumsum_quat.copy()
 
     return cumsum
+
 
 def blocks_delta_quat_helper(observations, next_observations):
     '''
@@ -288,8 +330,8 @@ def blocks_delta_quat_helper(observations, next_observations):
 
     return deltas
 
-def blocks_add_deltas(env):
 
+def blocks_add_deltas(env):
     def _fn(dataset):
         deltas = blocks_delta_quat_helper(dataset['observations'], dataset['next_observations'])
         # deltas = dataset['next_observations'] - dataset['observations']

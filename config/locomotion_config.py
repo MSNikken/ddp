@@ -1,6 +1,7 @@
 import os
 
 import torch
+import yaml
 
 from params_proto.neo_proto import ParamsProto, PrefixProto, Proto
 
@@ -59,3 +60,9 @@ class Config(ParamsProto):
     save_parallel = False
     n_reference = 8
     save_checkpoints = False
+
+
+with open('../config/kitchen.yml') as file:
+    override = yaml.safe_load(file)
+    for k, v in override.items():
+        setattr(Config, k, v)
