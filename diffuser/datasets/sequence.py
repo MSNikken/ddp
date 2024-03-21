@@ -2,6 +2,7 @@ from collections import namedtuple
 import numpy as np
 import torch
 import pdb
+import pypose as pp
 
 from .preprocessing import get_preprocess_fn
 from .d4rl import load_environment, sequence_dataset
@@ -11,6 +12,8 @@ from .buffer import ReplayBuffer
 RewardBatch = namedtuple('Batch', 'trajectories conditions returns')
 Batch = namedtuple('Batch', 'trajectories conditions')
 ValueBatch = namedtuple('ValueBatch', 'trajectories conditions values')
+
+SE3Batch = namedtuple('Batch', 'trajectories conditions pose vel returns')
 
 class SequenceDataset(torch.utils.data.Dataset):
 
@@ -38,6 +41,10 @@ class SequenceDataset(torch.utils.data.Dataset):
 
         self.observation_dim = fields.observations.shape[-1]
         self.action_dim = fields.actions.shape[-1]
+        if 'pose' in fields.keys:
+            self.observation_dim = 6
+            self.action_dim = 0
+
         self.fields = fields
         self.n_episodes = fields.n_episodes
         self.path_lengths = fields.path_lengths
@@ -99,7 +106,14 @@ class SequenceDataset(torch.utils.data.Dataset):
         else:
             batch = Batch(trajectories, conditions)
 
+        if 'pose' in self.fields.keys:
+            pose = self.fields.pose[path_ind, start:end]
+            vel = self.fields.vel[path_ind, start:end]
+            conditions = {0: pp.se3(pose[0])}
+            batch = SE3Batch(trajectories, conditions, pose, vel, returns)
+
         return batch
+
 
 class CondSequenceDataset(torch.utils.data.Dataset):
 

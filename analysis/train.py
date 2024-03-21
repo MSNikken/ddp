@@ -5,6 +5,6 @@ if __name__ == '__main__':
 
     wandb.login()
 
-    with wandb.init(project="diffusion", config=vars(Config)):
+    with wandb.init(project="diffusion", config=vars(Config), mode="disabled"):
         wandb.define_metric("loss", summary="min")
         main()

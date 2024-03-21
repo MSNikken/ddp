@@ -118,7 +118,7 @@ def joints_to_pose(env):
             Tpos[i] = np.hstack((xpos[robot.end_effector, :], xquat[robot.end_effector, :]))
             Tposdot[i] = np.hstack((lin_vel, rot_vel))
 
-        dataset['pose'] = Tpos
+        dataset['pose'] = pp.Log(pp.SE3(torch.from_numpy(Tpos))).numpy()
         dataset['vel'] = Tposdot
         return dataset
     return _fn

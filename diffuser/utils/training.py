@@ -147,6 +147,8 @@ class Trainer(object):
                     self.inv_render_samples()
                 elif self.model.__class__ == diffuser.models.diffusion.ActionGaussianDiffusion:
                     pass
+                elif self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion:
+                    pass
                 else:
                     self.render_samples()
 
