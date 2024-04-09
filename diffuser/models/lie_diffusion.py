@@ -20,7 +20,7 @@ def interpolate_sqrt_alphas_cumprod(H, sqrt_alphas_cumprod):
 
 
 class SE3Diffusion(nn.Module):
-    def __init__(self, model, horizon, observation_dim, action_dim, n_timesteps=1000,
+    def __init__(self, model, horizon, observation_dim, action_dim, n_diffsteps=1000,
                  loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
                  action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
                  condition_guidance_w=0.1, ar_inv=False, train_only_inv=False):
@@ -45,12 +45,12 @@ class SE3Diffusion(nn.Module):
         self.returns_condition = returns_condition
         self.condition_guidance_w = condition_guidance_w
 
-        betas = cosine_beta_schedule(n_timesteps)
+        betas = cosine_beta_schedule(n_diffsteps)
         alphas = 1. - betas
         alphas_cumprod = torch.cumprod(alphas, axis=0)
         alphas_cumprod_prev = torch.cat([torch.ones(1), alphas_cumprod[:-1]])
 
-        self.n_timesteps = int(n_timesteps)
+        self.n_diffsteps = int(n_diffsteps)
         self.clip_denoised = clip_denoised
         self.predict_epsilon = predict_epsilon
 
@@ -94,7 +94,8 @@ class SE3Diffusion(nn.Module):
                 { i: c } multiplies dimension i of observation loss by c
         '''
         self.action_weight = 1
-        dim_weights = torch.ones(self.observation_dim, dtype=torch.float32)
+        # TODO add velocity in loss
+        dim_weights = torch.ones(self.observation_dim - 6, dtype=torch.float32)
 
         ## decay loss with trajectory timestep: discount**t
         discounts = discount ** torch.arange(self.horizon, dtype=torch.float)
@@ -121,25 +122,30 @@ class SE3Diffusion(nn.Module):
         else:
             return noise
 
-    def q_posterior(self, H0: pp.se3_type, Hk: pp.se3_type, k):
-        tangent_shape = (*H0.shape[0:2], 6)
-        posterior_mean = pp.se3(
-                extract(self.posterior_mean_coef1, k, tangent_shape) * H0 +
-                extract(self.posterior_mean_coef2, k, tangent_shape) * Hk
+    def q_posterior(self, x0: pp.se3_type, xk: pp.se3_type, k):
+        posterior_mean = (
+            extract(self.posterior_mean_coef1, k, x0.shape) * x0 +
+            extract(self.posterior_mean_coef2, k, x0.shape) * xk
         )
-        posterior_variance = extract(self.posterior_variance, k, tangent_shape)
-        posterior_log_variance_clipped = extract(self.posterior_log_variance_clipped, k, tangent_shape)
+        posterior_variance = extract(self.posterior_variance, k, x0.shape)
+        posterior_log_variance_clipped = extract(self.posterior_log_variance_clipped, k, x0.shape)
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
-    def p_mean_variance(self, Hk, cond, k, returns=None):
+    def p_mean_variance(self, xk, cond, k, returns=None):
         if self.returns_condition:
-            H_k0_cond = self.model(Hk, cond, k, returns, use_dropout=False)
-            H_k0_uncond = self.model(Hk, cond, k, returns, force_dropout=True)
-            H_k0 = H_k0_uncond + self.condition_guidance_w * (H_k0_cond - H_k0_uncond)
+            x_k0_cond = self.model(xk, cond, k, returns, use_dropout=False)
+            x_k0_uncond = self.model(xk, cond, k, returns, force_dropout=True)
+            x_k0 = x_k0_uncond + self.condition_guidance_w * (x_k0_cond - x_k0_uncond)
         else:
-            H_k0 = self.model(Hk, cond, k)
+            x_k0 = self.model(xk, cond, k)
 
-        H0_recon = pp.Log(pp.Exp(pp.se3(H_k0)) @ pp.Exp(pp.se3(Hk)).Inv())
+        H_k0 = pp.Exp(pp.se3(x_k0[..., :6]))
+        H_k = pp.Exp(pp.se3(xk[..., :6]))
+        H0_recon = pp.Log(H_k0 @ H_k)
+
+        T_k = xk[..., 6:12]
+        T_epsilon = x_k0[..., 6:12]
+        T0_recon = self.predict_start_from_noise(T_k, k, T_epsilon)
         #k = k.detach().to(torch.int64)
 
         if self.clip_denoised:
@@ -148,43 +154,44 @@ class SE3Diffusion(nn.Module):
             assert RuntimeError()
 
         model_mean, posterior_variance, posterior_log_variance = self.q_posterior(
-            H0_recon, Hk, k)
+            torch.cat([H0_recon, T0_recon], dim=-1), xk, k)
         return model_mean, posterior_variance, posterior_log_variance
 
     @torch.no_grad()
-    def p_sample(self, Hk, cond, k, returns=None):
-        epsilon = torch.randn(Hk.shape, device=Hk.device)
-        model_mean, posterior_variance, _ = self.p_mean_variance(Hk, cond, k, returns)
-
-        return model_mean + pp.se3(torch.sqrt(posterior_variance * epsilon))
+    def p_sample(self, xk, cond, k, returns=None):
+        b, *_, device = *xk.shape, xk.device
+        model_mean, posterior_variance, posterior_log_variance = self.p_mean_variance(xk, cond, k, returns)
+        noise = 0.5 * torch.randn_like(xk)
+        # no noise when t == 0
+        nonzero_mask = (1 - (k == 0).float()).reshape(b, *((1,) * (len(xk.shape) - 1)))
+        return model_mean + nonzero_mask * (0.5 * posterior_log_variance).exp() * noise
 
     @torch.no_grad()
     def p_sample_loop(self, shape, cond, returns=None, verbose=True, return_diffusion=False):
         device = self.betas.device
 
         batch_size = shape[0]
-        noise = 0.5 * torch.randn(shape, device=device)
-        H_k = pp.se3(noise)
-        H_k = apply_conditioning(H_k, cond, 0)
+        xk = 0.5 * torch.randn(shape, device=device)
+        xk = apply_conditioning(xk, cond, 0)
 
-        if return_diffusion: diffusion = [H_k]
+        if return_diffusion: diffusion = [xk]
 
-        progress = utils.Progress(self.n_timesteps) if verbose else utils.Silent()
-        for i in reversed(range(0, self.n_timesteps)):
-            timesteps = torch.full((batch_size,), i, device=device, dtype=torch.long)
-            H_k = self.p_sample(H_k, cond, timesteps, returns)
-            H_k = apply_conditioning(H_k, cond, 0)
+        progress = utils.Progress(self.n_diffsteps) if verbose else utils.Silent()
+        for i in reversed(range(0, self.n_diffsteps)):
+            diffsteps = torch.full((batch_size,), i, device=device, dtype=torch.long)
+            xk = self.p_sample(xk, cond, diffsteps, returns)
+            xk = apply_conditioning(xk, cond, 0)
 
             progress.update({'k': i})
 
-            if return_diffusion: diffusion.append(H_k)
+            if return_diffusion: diffusion.append(xk)
 
         progress.close()
 
         if return_diffusion:
-            return H_k, torch.stack(diffusion, dim=1)
+            return xk, torch.stack(diffusion, dim=1)
         else:
-            return H_k
+            return xk
 
     @torch.no_grad()
     def conditional_sample(self, cond, returns=None, horizon=None, *args, **kwargs):
@@ -199,37 +206,45 @@ class SE3Diffusion(nn.Module):
 
     # ------------------------------------------ training ------------------------------------------#
 
-    def q_sample(self, H0, t, noise=None, gamma=1):
+    def q_sample(self, x_start, k, noise=None, gamma=1):
         if noise is None:
-            noise = torch.randn(H0.shape, device=H0.device)
+            H_noise = torch.randn((*x_start.shape[:-1], 6), device=x_start.device)
+            T_noise = torch.randn((*x_start.shape[:-1], 6), device=x_start.device)
+        else:
+            H_noise = noise[..., :6]
+            T_noise = noise[..., 6:12]
 
-        # sample = (
-        #         extract(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start +
-        #         extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
-        # )
+        H_start = x_start[..., :6]
+        T_start = x_start[..., 6:12]
 
-        perturb = pp.Exp(pp.se3(gamma * extract(self.sqrt_one_minus_alphas_cumprod, t, noise.shape) * noise))
-        interp = interpolate_sqrt_alphas_cumprod(pp.Exp(H0), extract(self.sqrt_alphas_cumprod, t, noise.shape))
-        return perturb @ interp
+        T_k = (
+                extract(self.sqrt_alphas_cumprod, k, T_start.shape) * T_start +
+                extract(self.sqrt_one_minus_alphas_cumprod, k, T_start.shape) * T_noise
+        )
 
-    def p_losses(self, H, V, cond, t, returns=None):
-        H = pp.se3(H)
-        H_noisy = pp.Log(self.q_sample(H0=H, t=t))
-        H_noisy = apply_conditioning(H_noisy, cond, 0)
+        perturb = pp.Exp(pp.se3(gamma * extract(self.sqrt_one_minus_alphas_cumprod, k, H_noise.shape) * H_noise))
+        interp = interpolate_sqrt_alphas_cumprod(pp.Exp(pp.se3(H_start)), extract(self.sqrt_alphas_cumprod, k, H_noise.shape))
+        H_k = pp.Log(perturb @ interp)
+        return torch.cat([H_k.tensor(), T_k], dim=-1)
 
-        H_rel_recon = self.model(H_noisy.tensor(), cond, t, returns)
+    def p_losses(self, x_start, cond, k, returns=None):
+        x_noisy = self.q_sample(x_start=x_start, k=k)
+        x_noisy = apply_conditioning(x_noisy, cond, 0)
 
-        H_rel_hat_recon = pp.se3(H_rel_recon)
-        H_rel_hat = pp.Log(pp.Exp(H) @ pp.Exp(H_noisy.Inv()))
-        loss, info = self.loss_fn(H_rel_hat_recon, H_rel_hat)
+        x_recon = self.model(x_noisy, cond, k, returns)
+        H = pp.Exp(pp.se3(x_start[..., :6]))
+        H_noisy = pp.Exp(pp.se3(x_noisy[..., :6]))
+        H_rel_recon = pp.se3(x_recon[..., :6])
+        H_rel = pp.Log(H @ H_noisy.Inv())
+        loss, info = self.loss_fn(H_rel_recon, H_rel)
 
         return loss, info
 
-    def loss(self, x, cond, pose, vel, returns=None):
+    def loss(self, x, cond, returns=None):
         batch_size = len(x)
-        t = torch.randint(0, self.n_timesteps, (batch_size,), device=x.device).long()
+        k = torch.randint(0, self.n_diffsteps, (batch_size,), device=x.device).long()
         #diffuse_loss, info = self.p_losses(x[:, :, self.action_dim:], cond, t, returns)
-        diffuse_loss, info = self.p_losses(pose, vel, cond, t, returns)
+        diffuse_loss, info = self.p_losses(x, cond, k, returns)
         # Calculating inv loss
         # x_t = x[:, :-1, self.action_dim:]
         # a_t = x[:, :-1, :self.action_dim]
