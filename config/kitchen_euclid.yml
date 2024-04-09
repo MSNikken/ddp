@@ -9,7 +9,7 @@ normalizer: 'CDFNormalizer'
 
 
 # Model
-diffusion: 'models.SE3Diffusion'
+diffusion: 'models.GaussianInvDynDiffusion'
 returns_condition: False
 
 # Training
@@ -17,4 +17,4 @@ sample_freq: 10000
 
 # Representation/visualization
 renderer: 'utils.PathRenderer'
-representation: 'se3'
+representation: 'cart'
