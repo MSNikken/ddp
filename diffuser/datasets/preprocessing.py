@@ -94,9 +94,17 @@ def maze2d_set_terminals(env):
 
 
 # -------------------------- end-effector representation in SE(3) ------------#
+def only_trajectory(env):
+    xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../environments/franka/franka_panda.xml')
+    robot = Robot(xml_path)
 
-def joints_to_pose(env):
-    import pypose as pp
+    def _fn(dataset):
+        dataset['observations'] = dataset['observations'][:, :2*robot.njoints]
+        return dataset
+    return _fn
+
+
+def joints_to_cart(env):
     xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../environments/franka/franka_panda.xml')
     robot = Robot(xml_path)
 
@@ -104,23 +112,46 @@ def joints_to_pose(env):
         qpos = dataset['observations'][:, :robot.njoints]
         qvel = dataset['observations'][:, robot.njoints:2 * robot.njoints]
 
-        # Tpos = pp.LieTensor(torch.empty((qpos.shape[0], 7)), ltype=pp.SE3_type)
-        # Tposdot = torch.empty((qpos.shape[0], 6))
-        Tpos = np.empty((qpos.shape[0], 7))
-        Tposdot = np.empty((qpos.shape[0], 6))
+        cart_posvel = np.empty((qpos.shape[0], 13))
 
-        for i in range(Tpos.shape[0]):
+        for i in range(qpos.shape[0]):
             xpos, xquat = robot.fwd_kinematics(qpos[i, :])
             lin_vel, rot_vel = robot.fwd_diff_kinematics(qpos[i, :], qvel[i, :])
+            cart_posvel[i] = np.hstack((xpos[robot.end_effector, :], xquat[robot.end_effector, :], lin_vel, rot_vel))
 
-            # Tpos[i] = torch.from_numpy(np.hstack((xpos[robot.end_effector,:], xquat[robot.end_effector,:])))
-            # Tposdot[i] = torch.from_numpy(np.hstack((lin_vel, rot_vel)))
-            Tpos[i] = np.hstack((xpos[robot.end_effector, :], xquat[robot.end_effector, :]))
-            Tposdot[i] = np.hstack((lin_vel, rot_vel))
-
-        dataset['pose'] = pp.Log(pp.SE3(torch.from_numpy(Tpos))).numpy()
-        dataset['vel'] = Tposdot
+        dataset['observations'] = np.concatenate((cart_posvel, dataset['observations'][:, 2*robot.njoints:]), axis=1)
         return dataset
+    return _fn
+
+
+def cart_to_se3(env):
+    # Assumes the first 13 observations are [xpos, xquat, lin_vel, rot_vel]
+    import pypose as pp
+
+    def _fn(dataset):
+        pose = pp.Log(pp.SE3(dataset['observations'][:, :7]))
+        vel = dataset['observations'][:, 7:13]
+        twist = pp.se3(vel)
+        pose_twist = np.concatenate((pose, twist), axis=1)
+        dataset['observations'] = np.concatenate((pose_twist, dataset['observations'][:, 13:]), axis=1)
+
+
+        # R = pp.SO3(xquat[robot.end_effector, :])
+        # t = pp.so3(lin_vel)
+        # # R.Jinvp(t)
+        # w_skew = np.array([[0, -1 * rot_vel[2], rot_vel[1]],
+        #                    [rot_vel[2], 0, -1 * rot_vel[0]],
+        #                    [-1 * rot_vel[1], rot_vel[0], 0]])
+        # twist = np.zeros((4, 4))
+        # twist[:3, :3] = w_skew
+        # twist[:3, -1] = lin_vel
+        # H = np.identity(4) + twist * np.sin(1) + twist @ twist * (1 - np.cos(1))
+        # H_gt = pp.mat2SE3(H).Log()
+        # H_pp = pp.Exp(pp.se3(np.hstack((R.Jinvp(t), rot_vel)))).matrix().numpy()
+        # # (R.Inv().Jinvp(t), rot_vel)
+        # vel[i] = np.hstack(H_gt.numpy())
+        return dataset
+
     return _fn
 
 # -------------------------- block-stacking --------------------------#
