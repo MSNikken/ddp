@@ -38,6 +38,7 @@ class EMA():
             return new
         return old * self.beta + (1 - self.beta) * new
 
+
 class Trainer(object):
     def __init__(
         self,
@@ -143,11 +144,10 @@ class Trainer(object):
                 self.render_reference(self.n_reference)
 
             if self.sample_freq and self.step % self.sample_freq == 0:
-                if self.model.__class__ == diffuser.models.diffusion.GaussianInvDynDiffusion:
+                if (self.model.__class__ == diffuser.models.diffusion.GaussianInvDynDiffusion
+                        or self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion):
                     self.inv_render_samples()
                 elif self.model.__class__ == diffuser.models.diffusion.ActionGaussianDiffusion:
-                    pass
-                elif self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion:
                     pass
                 else:
                     self.render_samples()
