@@ -12,11 +12,12 @@ from .helpers import (
     Losses,
 )
 
+
 class GaussianDiffusion(nn.Module):
-    def __init__(self, model, horizon, observation_dim, action_dim, n_timesteps=1000,
-        loss_type='l1', clip_denoised=False, predict_epsilon=True,
-        action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
-        condition_guidance_w=0.1,):
+    def __init__(self, model, horizon, observation_dim, action_dim, n_diffsteps=1000,
+                 loss_type='l1', clip_denoised=False, predict_epsilon=True,
+                 action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
+                 condition_guidance_w=0.1):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
@@ -26,12 +27,12 @@ class GaussianDiffusion(nn.Module):
         self.returns_condition = returns_condition
         self.condition_guidance_w = condition_guidance_w
 
-        betas = cosine_beta_schedule(n_timesteps)
+        betas = cosine_beta_schedule(n_diffsteps)
         alphas = 1. - betas
         alphas_cumprod = torch.cumprod(alphas, axis=0)
         alphas_cumprod_prev = torch.cat([torch.ones(1), alphas_cumprod[:-1]])
 
-        self.n_timesteps = int(n_timesteps)
+        self.n_diffsteps = int(n_diffsteps)
         self.clip_denoised = clip_denoised
         self.predict_epsilon = predict_epsilon
 
@@ -162,8 +163,8 @@ class GaussianDiffusion(nn.Module):
 
         if return_diffusion: diffusion = [x]
 
-        progress = utils.Progress(self.n_timesteps) if verbose else utils.Silent()
-        for i in reversed(range(0, self.n_timesteps)):
+        progress = utils.Progress(self.n_diffsteps) if verbose else utils.Silent()
+        for i in reversed(range(0, self.n_diffsteps)):
             timesteps = torch.full((batch_size,), i, device=device, dtype=torch.long)
             x = self.p_sample(x, cond, timesteps, returns)
             x = apply_conditioning(x, cond, self.action_dim)
@@ -208,8 +209,8 @@ class GaussianDiffusion(nn.Module):
 
         if return_diffusion: diffusion = [x]
 
-        progress = utils.Progress(self.n_timesteps) if verbose else utils.Silent()
-        for i in reversed(range(0, self.n_timesteps)):
+        progress = utils.Progress(self.n_diffsteps) if verbose else utils.Silent()
+        for i in reversed(range(0, self.n_diffsteps)):
             timesteps = torch.full((batch_size,), i, device=device, dtype=torch.long)
             x = self.grad_p_sample(x, cond, timesteps, returns)
             x = apply_conditioning(x, cond, self.action_dim)
@@ -282,17 +283,17 @@ class GaussianDiffusion(nn.Module):
 
     def loss(self, x, cond, returns=None):
         batch_size = len(x)
-        t = torch.randint(0, self.n_timesteps, (batch_size,), device=x.device).long()
+        t = torch.randint(0, self.n_diffsteps, (batch_size,), device=x.device).long()
         return self.p_losses(x, cond, t, returns)
 
     def forward(self, cond, *args, **kwargs):
         return self.conditional_sample(cond=cond, *args, **kwargs)
 
 class GaussianInvDynDiffusion(nn.Module):
-    def __init__(self, model, horizon, observation_dim, action_dim, n_timesteps=1000,
-        loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
-        action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
-        condition_guidance_w=0.1, ar_inv=False, train_only_inv=False):
+    def __init__(self, model, horizon, observation_dim, action_dim, n_diffsteps=1000,
+                 loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
+                 action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
+                 condition_guidance_w=0.1, ar_inv=False, train_only_inv=False):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
@@ -314,12 +315,12 @@ class GaussianInvDynDiffusion(nn.Module):
         self.returns_condition = returns_condition
         self.condition_guidance_w = condition_guidance_w
 
-        betas = cosine_beta_schedule(n_timesteps)
+        betas = cosine_beta_schedule(n_diffsteps)
         alphas = 1. - betas
         alphas_cumprod = torch.cumprod(alphas, axis=0)
         alphas_cumprod_prev = torch.cat([torch.ones(1), alphas_cumprod[:-1]])
 
-        self.n_timesteps = int(n_timesteps)
+        self.n_diffsteps = int(n_diffsteps)
         self.clip_denoised = clip_denoised
         self.predict_epsilon = predict_epsilon
 
@@ -439,8 +440,8 @@ class GaussianInvDynDiffusion(nn.Module):
 
         if return_diffusion: diffusion = [x]
 
-        progress = utils.Progress(self.n_timesteps) if verbose else utils.Silent()
-        for i in reversed(range(0, self.n_timesteps)):
+        progress = utils.Progress(self.n_diffsteps) if verbose else utils.Silent()
+        for i in reversed(range(0, self.n_diffsteps)):
             timesteps = torch.full((batch_size,), i, device=device, dtype=torch.long)
             x = self.p_sample(x, cond, timesteps, returns)
             x = apply_conditioning(x, cond, 0)
@@ -518,7 +519,7 @@ class GaussianInvDynDiffusion(nn.Module):
                 info = {'a0_loss': loss}
         else:
             batch_size = len(x)
-            t = torch.randint(0, self.n_timesteps, (batch_size,), device=x.device).long()
+            t = torch.randint(0, self.n_diffsteps, (batch_size,), device=x.device).long()
             diffuse_loss, info = self.p_losses(x[:, :, self.action_dim:], cond, t, returns)
             # Calculating inv loss
             x_t = x[:, :-1, self.action_dim:]
