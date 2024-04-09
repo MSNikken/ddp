@@ -25,12 +25,14 @@ def main(**deps):
         returns_scale=Config.returns_scale,
         discount=Config.discount,
         termination_penalty=Config.termination_penalty,
+        repres=Config.representation
     )
 
     render_config = utils.Config(
         Config.renderer,
         savepath='render_config.pkl',
         env=Config.dataset,
+        repres=Config.representation
     )
 
     dataset = dataset_config()
@@ -42,27 +44,13 @@ def main(**deps):
     # ------------------------------ model & trainer ------------------------------#
     # -----------------------------------------------------------------------------#
     if Config.diffusion == 'models.GaussianInvDynDiffusion':
-        model_config = utils.Config(
-            Config.model,
-            savepath='model_config.pkl',
-            horizon=Config.horizon,
-            transition_dim=observation_dim,
-            cond_dim=observation_dim,
-            dim_mults=Config.dim_mults,
-            returns_condition=Config.returns_condition,
-            dim=Config.dim,
-            condition_dropout=Config.condition_dropout,
-            calc_energy=Config.calc_energy,
-            device=Config.device,
-        )
-
         diffusion_config = utils.Config(
             Config.diffusion,
             savepath='diffusion_config.pkl',
             horizon=Config.horizon,
             observation_dim=observation_dim,
             action_dim=action_dim,
-            n_timesteps=Config.n_diffusion_steps,
+            n_diffsteps=Config.n_diffusion_steps,
             loss_type=Config.loss_type,
             clip_denoised=Config.clip_denoised,
             predict_epsilon=Config.predict_epsilon,
@@ -78,6 +66,40 @@ def main(**deps):
             device=Config.device,
         )
     else:
+        diffusion_config = utils.Config(
+            Config.diffusion,
+            savepath='diffusion_config.pkl',
+            horizon=Config.horizon,
+            observation_dim=observation_dim,
+            action_dim=action_dim,
+            n_diffsteps=Config.n_diffusion_steps,
+            loss_type=Config.loss_type,
+            clip_denoised=Config.clip_denoised,
+            predict_epsilon=Config.predict_epsilon,
+            ## loss weighting
+            action_weight=Config.action_weight,
+            loss_weights=Config.loss_weights,
+            loss_discount=Config.loss_discount,
+            returns_condition=Config.returns_condition,
+            condition_guidance_w=Config.condition_guidance_w,
+            device=Config.device,
+        )
+
+    if Config.diffusion == 'models.GaussianInvDynDiffusion' or Config.diffusion == 'models.SE3Diffusion':
+        model_config = utils.Config(
+            Config.model,
+            savepath='model_config.pkl',
+            horizon=Config.horizon,
+            transition_dim=observation_dim,
+            cond_dim=observation_dim,
+            dim_mults=Config.dim_mults,
+            returns_condition=Config.returns_condition,
+            dim=Config.dim,
+            condition_dropout=Config.condition_dropout,
+            calc_energy=Config.calc_energy,
+            device=Config.device,
+        )
+    else:
         model_config = utils.Config(
             Config.model,
             savepath='model_config.pkl',
@@ -89,25 +111,6 @@ def main(**deps):
             dim=Config.dim,
             condition_dropout=Config.condition_dropout,
             calc_energy=Config.calc_energy,
-            device=Config.device,
-        )
-
-        diffusion_config = utils.Config(
-            Config.diffusion,
-            savepath='diffusion_config.pkl',
-            horizon=Config.horizon,
-            observation_dim=observation_dim,
-            action_dim=action_dim,
-            n_timesteps=Config.n_diffusion_steps,
-            loss_type=Config.loss_type,
-            clip_denoised=Config.clip_denoised,
-            predict_epsilon=Config.predict_epsilon,
-            ## loss weighting
-            action_weight=Config.action_weight,
-            loss_weights=Config.loss_weights,
-            loss_discount=Config.loss_discount,
-            returns_condition=Config.returns_condition,
-            condition_guidance_w=Config.condition_guidance_w,
             device=Config.device,
         )
 

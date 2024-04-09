@@ -1,3 +1,4 @@
+import functools
 import os
 import numpy as np
 import einops
@@ -8,7 +9,9 @@ import gym
 import mujoco_py as mjc
 import warnings
 import pdb
+import pypose as pp
 
+from . import plot_trajectory
 from .arrays import to_np
 from .video import save_video, save_videos
 import wandb
@@ -47,16 +50,41 @@ def atmost_2d(x):
         x = x.squeeze(0)
     return x
 
+
 #-----------------------------------------------------------------------------#
 #---------------------------------- renderers --------------------------------#
 #-----------------------------------------------------------------------------#
+class PathRenderer(object):
+    def __init__(self, env=None, repres='se3', **kwargs):
+        assert repres == 'se3' or repres == 'cart'
+
+        self.render = functools.partial(plot_trajectory, step=5, block=False, **kwargs)
+        self.cart = repres == 'cart'
+        self.traj_dim = 7 if self.cart else 6
+
+    def composite(self, savepath, observations):
+        paths = observations[:, :, :self.traj_dim]
+        if self.cart:
+            # Normalize quaternions
+            paths[..., 3:] = paths[..., 3:] / np.linalg.norm(paths[..., 3:], axis=-1, keepdims=True)
+            paths = pp.SE3(paths)
+
+        fig, ax = self.render(paths)
+
+        if savepath is not None:
+            plt.savefig(savepath)
+            wandb.log({"image_samples": {savepath: wandb.Image(fig)}})
+            plt.close(fig)
+            print(f'Saved {len(paths)} samples to: {savepath}')
+
 
 class MuJoCoRenderer:
     '''
         default mujoco renderer
     '''
 
-    def __init__(self, env):
+    def __init__(self, env, repr='joint'):
+        assert repr == 'joint'
         if type(env) is str:
             env = env_map(env)
             self.env = gym.make(env)
