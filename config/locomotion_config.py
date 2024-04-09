@@ -28,7 +28,10 @@ class Config(ParamsProto):
     condition_dropout=0.25
     condition_guidance_w = 1.2
     test_ret=0.9
+
+    ## rendering
     renderer = 'utils.MuJoCoRenderer'
+    representation = 'joint'
 
     ## dataset
     loader = 'datasets.SequenceDataset'
@@ -62,7 +65,9 @@ class Config(ParamsProto):
     save_checkpoints = False
 
 
-with open('../config/kitchen.yml') as file:
-    override = yaml.safe_load(file)
-    for k, v in override.items():
-        setattr(Config, k, v)
+config_file = os.environ.get('CONFIG')
+if config_file is not None:
+    with open(config_file) as file:
+        override = yaml.safe_load(file)
+        for k, v in override.items():
+            setattr(Config, k, v)
