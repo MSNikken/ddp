@@ -1,7 +1,7 @@
 import numpy as np
 import torch, pypose as pp
 
-from diffuser.utils import plot_trajectory
+from diffuser.utils.visualization import plot_trajectory
 from diffuser.models.helpers import dist1
 
 

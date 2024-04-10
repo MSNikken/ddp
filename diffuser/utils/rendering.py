@@ -11,7 +11,7 @@ import warnings
 import pdb
 import pypose as pp
 
-from . import plot_trajectory
+from .visualization import plot_trajectory
 from .arrays import to_np
 from .video import save_video, save_videos
 import wandb
