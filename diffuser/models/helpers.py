@@ -6,12 +6,14 @@ import torch.nn.functional as F
 import einops
 from einops.layers.torch import Rearrange
 import pdb
+import pypose as pp
 
 import diffuser.utils as utils
 
-#-----------------------------------------------------------------------------#
-#---------------------------------- modules ----------------------------------#
-#-----------------------------------------------------------------------------#
+
+# -----------------------------------------------------------------------------#
+# ---------------------------------- modules ----------------------------------#
+# -----------------------------------------------------------------------------#
 
 class SinusoidalPosEmb(nn.Module):
     def __init__(self, dim):
@@ -27,6 +29,7 @@ class SinusoidalPosEmb(nn.Module):
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
         return emb
 
+
 class Downsample1d(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -35,6 +38,7 @@ class Downsample1d(nn.Module):
     def forward(self, x):
         return self.conv(x)
 
+
 class Upsample1d(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -42,6 +46,7 @@ class Upsample1d(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
+
 
 class Conv1dBlock(nn.Module):
     '''
@@ -68,14 +73,15 @@ class Conv1dBlock(nn.Module):
         return self.block(x)
 
 
-#-----------------------------------------------------------------------------#
-#---------------------------------- sampling ---------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# ---------------------------------- sampling ---------------------------------#
+# -----------------------------------------------------------------------------#
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
     out = a.gather(-1, t)
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
+
 
 def cosine_beta_schedule(timesteps, s=0.008, dtype=torch.float32):
     """
@@ -90,14 +96,56 @@ def cosine_beta_schedule(timesteps, s=0.008, dtype=torch.float32):
     betas_clipped = np.clip(betas, a_min=0, a_max=0.999)
     return torch.tensor(betas_clipped, dtype=dtype)
 
+
 def apply_conditioning(x, conditions, action_dim):
     for t, val in conditions.items():
         x[:, t, action_dim:] = val.clone()
     return x
 
-#-----------------------------------------------------------------------------#
-#---------------------------------- losses -----------------------------------#
-#-----------------------------------------------------------------------------#
+
+# -----------------------------------------------------------------------------#
+# ------------------------ physical evaluation --------------------------------#
+# -----------------------------------------------------------------------------#
+def dist1(H1, H2):
+    # At identity
+    d1 = torch.linalg.vector_norm(pp.Log(H1 * H2.Inv()), dim=-1)
+    d2 = torch.linalg.vector_norm(pp.Log(H2 * H1.Inv()), dim=-1)
+    # At H1
+    d3 = torch.linalg.vector_norm(pp.Log(H1.Inv() * H2), dim=-1)
+    # At H2
+    d4 = torch.linalg.vector_norm(pp.Log(H2.Inv() * H1), dim=-1)
+    # Undefined
+    d5 = torch.linalg.vector_norm(pp.Log(H1) - pp.Log(H2), dim=-1)
+    return d1
+
+def kinematic_consistency(x, dt):
+    x_t = x[:-1]
+    x_t_dt = x[1:]
+
+    H_t = pp.Exp(pp.se3(x_t[:, :6]))
+    T_t = pp.se3(x_t[:, 6:])
+
+    H_t_dt = pp.Exp(pp.se3(x_t_dt[:, :6]))
+    T_t_dt = pp.se3(x_t_dt[:, 6:])
+
+    # Forward/backward projection
+    H_forward = pp.Exp(pp.se3(T_t * dt / 2)) * H_t
+    H_backward = pp.Exp(pp.se3(T_t_dt * dt / -2)) * H_t_dt
+
+    H_forward = pp.Exp(pp.se3(H_t.Adj(T_t) * dt / 2)) * H_t
+    H_backward = pp.Exp(pp.se3(H_t_dt.Adj(T_t_dt) * dt / -2)) * H_t_dt
+
+    H_forward = pp.Exp(pp.se3(H_t.Inv().Adj(T_t) * dt / 2)) * H_t
+    H_backward = pp.Exp(pp.se3(H_t_dt.Inv().Adj(T_t_dt) * dt / -2)) * H_t_dt
+    # Compare some variants:
+    from diffuser.utils.visualization import plot_trajectory
+    plot_trajectory(H_t)
+    return pp.Log(H_backward * H_forward.Inv())
+
+
+# -----------------------------------------------------------------------------#
+# ---------------------------------- losses -----------------------------------#
+# -----------------------------------------------------------------------------#
 
 class WeightedLoss(nn.Module):
 
@@ -116,6 +164,7 @@ class WeightedLoss(nn.Module):
         a0_loss = (loss[:, 0, :self.action_dim] / self.weights[0, :self.action_dim]).mean()
         return weighted_loss, {'a0_loss': a0_loss}
 
+
 class WeightedStateLoss(nn.Module):
 
     def __init__(self, weights):
@@ -131,6 +180,7 @@ class WeightedStateLoss(nn.Module):
         weighted_loss = (loss * self.weights).mean()
         return weighted_loss, {'a0_loss': weighted_loss}
 
+
 class ValueLoss(nn.Module):
     def __init__(self, *args):
         super().__init__()
@@ -143,7 +193,7 @@ class ValueLoss(nn.Module):
             corr = np.corrcoef(
                 utils.to_np(pred).squeeze(),
                 utils.to_np(targ).squeeze()
-            )[0,1]
+            )[0, 1]
         else:
             corr = np.NaN
 
@@ -156,30 +206,36 @@ class ValueLoss(nn.Module):
 
         return loss, info
 
+
 class WeightedL1(WeightedLoss):
 
     def _loss(self, pred, targ):
         return torch.abs(pred - targ)
+
 
 class WeightedL2(WeightedLoss):
 
     def _loss(self, pred, targ):
         return F.mse_loss(pred, targ, reduction='none')
 
+
 class WeightedStateL2(WeightedStateLoss):
 
     def _loss(self, pred, targ):
         return F.mse_loss(pred, targ, reduction='none')
+
 
 class ValueL1(ValueLoss):
 
     def _loss(self, pred, targ):
         return torch.abs(pred - targ)
 
+
 class ValueL2(ValueLoss):
 
     def _loss(self, pred, targ):
         return F.mse_loss(pred, targ, reduction='none')
+
 
 Losses = {
     'l1': WeightedL1,
