@@ -111,7 +111,7 @@ class Trainer(object):
     #-----------------------------------------------------------------------------#
 
     def train(self, n_train_steps):
-        wandb.watch(self.model, log="all", log_freq=10)
+        wandb.watch(self.model, log="all", log_freq=self.log_freq)
 
         timer = Timer()
         for step in range(n_train_steps):
@@ -134,11 +134,13 @@ class Trainer(object):
             if self.step % self.log_freq == 0:
                 infos_str = ' | '.join([f'{key}: {val:8.4f}' for key, val in infos.items()])
                 print(f'step: {self.step}| loss: {loss:8.4f} | {infos_str} | t: {timer():8.4f}')
-                metrics = {k:v.detach().item() for k, v in infos.items()}
+                metrics = {k: v.detach().item() for k, v in infos.items()}
                 metrics['loss'] = loss.detach().item()
 
                 # Note: loss is divided by gradient_accumulate_every
-                wandb.log({**metrics, **{"loss": loss}, 'step': self.step})
+                # Postpone committing to sampling step
+                commit = not (self.sample_freq and self.step % self.sample_freq == 0)
+                wandb.log({**metrics, 'step': self.step}, commit)
 
             if self.step == 0 and self.sample_freq:
                 self.render_reference(self.n_reference)
@@ -172,6 +174,7 @@ class Trainer(object):
         else:
             savepath = os.path.join(savepath, 'state.pt')
         torch.save(data, savepath)
+        wandb.save(savepath, policy="now")
         print(f'[ utils/training ] Saved model to {savepath}')
 
     def load(self):
