@@ -65,8 +65,6 @@ class PathRenderer(object):
     def composite(self, savepath, observations):
         paths = observations[:, :, :self.traj_dim]
         if self.cart:
-            # Normalize quaternions
-            paths[..., 3:] = paths[..., 3:] / np.linalg.norm(paths[..., 3:], axis=-1, keepdims=True)
             paths = pp.SE3(paths)
 
         fig, ax = self.render(paths)

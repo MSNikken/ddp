@@ -4,6 +4,10 @@ import torch
 import pypose as pp
 
 
+def normalize_quaternions(batch_SE3: pp.SE3_type):
+    batch_SE3.tensor()[..., 3:] = batch_SE3.tensor()[..., 3:] / torch.linalg.norm(batch_SE3.tensor()[..., 3:], axis=-1, keepdims=True)
+    return batch_SE3
+
 def _plot_position(ax, traj: pp.SE3_type, indices, marker=True):
     traj = traj.numpy()
     x = traj[indices, 0]
@@ -49,6 +53,7 @@ def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True)
             traj = pp.Exp(pp.se3(traj))
 
     if rot:
+        traj = normalize_quaternions(traj)
         scale = torch.max(traj.tensor()[..., :3].view(-1, 3).max(dim=0).values -
                           traj.tensor()[..., :3].view(-1, 3).min(dim=0).values) * 0.05
 
