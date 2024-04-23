@@ -81,8 +81,8 @@ class MuJoCoRenderer:
         default mujoco renderer
     '''
 
-    def __init__(self, env, repr='joint'):
-        assert repr == 'joint'
+    def __init__(self, env, repres='joint'):
+        assert repres == 'joint'
         if type(env) is str:
             env = env_map(env)
             self.env = gym.make(env)
