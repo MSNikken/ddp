@@ -8,7 +8,7 @@ from diffuser.models.helpers import dist1
 def approx_instant_twist(H, dt=1.0):
     batch = H.shape[:-2]
     n_step = H.shape[-2]
-    T = pp.se3(torch.empty((*batch, n_step, 6), dtype=torch.double))
+    T = pp.se3(torch.empty((*batch, n_step, 6), dtype=H.dtype))
     # Assume no acceleration in the first interval
     T[..., 0, :] = pp.Log(H[..., 1, :] @ H[..., 0, :].Inv()) / dt
 
@@ -22,9 +22,19 @@ class BSplineDefault:
     method = 'bspline'
     xmin = np.array([0, 0, 0])
     xmax = np.array([1, 1, 1])
-    nr_trajectories = 1000
+    nr_trajectories = 10000
     nr_intervals = 4  # nr interpolated segments in a trajectory
     nr_steps = 50  # interpolation steps per trajectory segment
+    dt = 0.08  # s
+
+
+class BSplineTesting:
+    method = 'bspline'
+    xmin = np.array([1, 1, 1])*0
+    xmax = np.array([1, 1, 1])*4
+    nr_trajectories = 1000
+    nr_intervals = 2  # nr interpolated segments in a trajectory
+    nr_steps = 10  # interpolation steps per trajectory segment
     dt = 0.08  # s
 
 
@@ -53,7 +63,7 @@ class SplineGenerator(object):
         support_r = pp.so3(2 * torch.pi * torch.rand((n_traj, n_support, 1)) *
                            support_r / torch.norm(support_r, dim=2, keepdim=True)).Exp()
         support = pp.SE3(torch.cat((support_x, support_r.tensor()), dim=2))
-        return self.generate_from_support(support, interval=interval)
+        return self.generate_from_support(support, interval=interval), (support, interval)
 
 
 class SplineDataset(object):
@@ -68,7 +78,7 @@ class SplineDataset(object):
         self.data = self.generate()
 
     def generate(self):
-        path = self.splines.generate_random(n_traj=self.nr_trajectories, n_step=self.nr_steps, n_interval=self.nr_intervals)
+        path, _ = self.splines.generate_random(n_traj=self.nr_trajectories, n_step=self.nr_steps, n_interval=self.nr_intervals)
         twist = approx_instant_twist(path, dt=self.dt)
         if self.repres == 'se3':
             path = pp.Log(path)
@@ -91,10 +101,22 @@ class SplineDataset(object):
 
 if __name__ == "__main__":
     gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
-    paths = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
+    paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
     twists = approx_instant_twist(paths)
     dist1(paths[...,:-1,:],paths[...,1:,:])
     torch.mean(dist1(pp.Exp(twists[...,:-1,:]) @ paths[...,:-1,:],paths[...,1:,:]))
-    fig, ax = plot_trajectory(paths)
+    fig, ax = plot_trajectory(paths, show=False)
+    ax.set_title('B spline')
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
+    fig.show()
+
+    gen.interpolator = pp.chspline
+    paths = gen.generate_from_support(supp, interval)
+    twists = approx_instant_twist(paths)
+    fig, ax = plot_trajectory(paths, show=False)
+    ax.set_title('CH spline')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    fig.show()
+    pass
