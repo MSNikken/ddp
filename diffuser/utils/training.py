@@ -149,6 +149,7 @@ class Trainer(object):
                 if (self.model.__class__ == diffuser.models.diffusion.GaussianInvDynDiffusion
                         or self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion):
                     self.inv_render_samples()
+                    self.render_inpainting_samples()
                 elif self.model.__class__ == diffuser.models.diffusion.ActionGaussianDiffusion:
                     pass
                 else:
@@ -335,4 +336,62 @@ class Trainer(object):
             ####
 
             savepath = os.path.join('images', f'sample-{i}.png')
+            self.renderer.composite(savepath, observations)
+
+    def render_inpainting_samples(self, batch_size=2, n_samples=2):
+        '''
+            renders samples from (ema) diffusion model
+        '''
+        for i in range(batch_size):
+
+            # get a two random points in normalized space
+            conditions_sample = torch.rand(2, 1, self.dataset.observation_dim, device=self.device)*2 - 1
+            conditions = {k: v for k, v in zip([0, self.ema_model.horizon-1], conditions_sample)}
+            conditions = to_device(conditions, self.device)
+            # repeat each item in conditions `n_samples` times
+            conditions = apply_dict(
+                einops.repeat,
+                conditions,
+                'b d -> (repeat b) d', repeat=n_samples,
+            )
+
+            # [ n_samples x horizon x (action_dim + observation_dim) ]
+            if self.ema_model.returns_condition:
+                returns = to_device(torch.ones(n_samples, 1), self.device)
+            else:
+                returns = None
+
+            if self.ema_model.model.calc_energy:
+                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns)
+            else:
+                samples = self.ema_model.conditional_sample(conditions, returns=returns)
+
+            samples = to_np(samples)
+
+            # [ n_samples x horizon x observation_dim ]
+            normed_observations = samples[:, :, :]
+
+            # [ 1 x 1 x observation_dim ]
+            normed_conditions = to_np(conditions_sample)[:, None]
+
+            # from diffusion.datasets.preprocessing import blocks_cumsum_quat
+            # observations = conditions + blocks_cumsum_quat(deltas)
+            # observations = conditions + deltas.cumsum(axis=1)
+
+            # [ n_samples x (horizon + 2) x observation_dim ]
+            normed_observations = np.concatenate([
+                np.repeat(normed_conditions[0], n_samples, axis=0),
+                normed_observations,
+                np.repeat(normed_conditions[1], n_samples, axis=0)
+            ], axis=1)
+
+            # [ n_samples x (horizon + 1) x observation_dim ]
+            observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
+
+            # @TODO: remove block-stacking specific stuff
+            # from diffusion.datasets.preprocessing import blocks_euler_to_quat, blocks_add_kuka
+            # observations = blocks_add_kuka(observations)
+            ####
+
+            savepath = os.path.join('images', f'inpainting_sample-{i}.png')
             self.renderer.composite(savepath, observations)
