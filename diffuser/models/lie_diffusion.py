@@ -12,7 +12,7 @@ import pypose as pp
 
 
 def interpolate(H1: pp.SE3_type, H2: pp.SE3_type, scale: Union[float, torch.Tensor]):
-    return pp.Exp(pp.se3(scale * pp.Log(H2 @ H1.Inv()))) @ H1
+    return pp.Exp(pp.Log(H2 @ H1.Inv()) * scale) @ H1
 
 
 def interpolate_sqrt_alphas_cumprod(H, sqrt_alphas_cumprod):
@@ -206,7 +206,7 @@ class SE3Diffusion(nn.Module):
 
     # ------------------------------------------ training ------------------------------------------#
 
-    def q_sample(self, x_start, k, noise=None, gamma=1):
+    def q_sample(self, x_start, k, noise=None, gamma=0.1):
         if noise is None:
             H_noise = torch.randn((*x_start.shape[:-1], 6), device=x_start.device)
             T_noise = torch.randn((*x_start.shape[:-1], 6), device=x_start.device)
