@@ -23,7 +23,7 @@ class SE3Diffusion(nn.Module):
     def __init__(self, model, horizon, observation_dim, action_dim, n_diffsteps=1000,
                  loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
                  action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
-                 condition_guidance_w=0.1, ar_inv=False, train_only_inv=False):
+                 condition_guidance_w=0.1, gamma=1, ar_inv=False, train_only_inv=False):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
@@ -53,6 +53,7 @@ class SE3Diffusion(nn.Module):
         self.n_diffsteps = int(n_diffsteps)
         self.clip_denoised = clip_denoised
         self.predict_epsilon = predict_epsilon
+        self.gamma = gamma
 
         self.register_buffer('betas', betas)
         self.register_buffer('alphas_cumprod', alphas_cumprod)
@@ -161,7 +162,7 @@ class SE3Diffusion(nn.Module):
     def p_sample(self, xk, cond, k, returns=None):
         b, *_, device = *xk.shape, xk.device
         model_mean, posterior_variance, posterior_log_variance = self.p_mean_variance(xk, cond, k, returns)
-        noise = 0.5 * torch.randn_like(xk)
+        noise = 0.5 * self.gamma * torch.randn_like(xk)
         # no noise when t == 0
         nonzero_mask = (1 - (k == 0).float()).reshape(b, *((1,) * (len(xk.shape) - 1)))
         return model_mean + nonzero_mask * (0.5 * posterior_log_variance).exp() * noise
@@ -171,7 +172,7 @@ class SE3Diffusion(nn.Module):
         device = self.betas.device
 
         batch_size = shape[0]
-        xk = 0.5 * torch.randn(shape, device=device)
+        xk = 0.5 * self.gamma * torch.randn(shape, device=device)
         xk = apply_conditioning(xk, cond, 0)
 
         if return_diffusion: diffusion = [xk]
@@ -206,7 +207,7 @@ class SE3Diffusion(nn.Module):
 
     # ------------------------------------------ training ------------------------------------------#
 
-    def q_sample(self, x_start, k, noise=None, gamma=0.1):
+    def q_sample(self, x_start, k, noise=None, gamma=1):
         if noise is None:
             H_noise = torch.randn((*x_start.shape[:-1], 6), device=x_start.device)
             T_noise = torch.randn((*x_start.shape[:-1], 6), device=x_start.device)
@@ -228,7 +229,7 @@ class SE3Diffusion(nn.Module):
         return torch.cat([H_k.tensor(), T_k], dim=-1)
 
     def p_losses(self, x_start, cond, k, returns=None):
-        x_noisy = self.q_sample(x_start=x_start, k=k)
+        x_noisy = self.q_sample(x_start=x_start, k=k, gamma=self.gamma)
         x_noisy = apply_conditioning(x_noisy, cond, 0)
 
         x_recon = self.model(x_noisy, cond, k, returns)

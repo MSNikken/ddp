@@ -65,6 +65,30 @@ def main(**deps):
             condition_guidance_w=Config.condition_guidance_w,
             device=Config.device,
         )
+    elif Config.diffusion == 'models.SE3Diffusion':
+        diffusion_config = utils.Config(
+            Config.diffusion,
+            savepath='diffusion_config.pkl',
+            horizon=Config.horizon,
+            observation_dim=observation_dim,
+            action_dim=action_dim,
+            n_diffsteps=Config.n_diffusion_steps,
+            loss_type=Config.loss_type,
+            clip_denoised=Config.clip_denoised,
+            predict_epsilon=Config.predict_epsilon,
+            hidden_dim=Config.hidden_dim,
+            ar_inv=Config.ar_inv,
+            train_only_inv=Config.train_only_inv,
+            # noise scaling
+            gamma=Config.gamma,
+            # loss weighting
+            action_weight=Config.action_weight,
+            loss_weights=Config.loss_weights,
+            loss_discount=Config.loss_discount,
+            returns_condition=Config.returns_condition,
+            condition_guidance_w=Config.condition_guidance_w,
+            device=Config.device,
+        )
     else:
         diffusion_config = utils.Config(
             Config.diffusion,

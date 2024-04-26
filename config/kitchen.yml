@@ -11,6 +11,7 @@ normalizer: 'CDFNormalizer'
 # Model
 diffusion: 'models.SE3Diffusion'
 returns_condition: False
+gamma: 0.1
 
 # Training
 sample_freq: 10000
