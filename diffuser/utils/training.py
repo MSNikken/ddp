@@ -140,16 +140,20 @@ class Trainer(object):
                 # Note: loss is divided by gradient_accumulate_every
                 # Postpone committing to sampling step
                 commit = not (self.sample_freq and self.step % self.sample_freq == 0)
-                wandb.log({**metrics, 'step': self.step}, commit)
+                wandb.log({**metrics, 'step': self.step}, commit=commit)
 
             if self.step == 0 and self.sample_freq:
-                self.render_reference(self.n_reference)
+                log_entry = self.render_reference(self.n_reference)
+                if log_entry is not None:
+                    wandb.log(log_entry, commit=False)
 
             if self.sample_freq and self.step % self.sample_freq == 0:
                 if (self.model.__class__ == diffuser.models.diffusion.GaussianInvDynDiffusion
                         or self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion):
-                    self.inv_render_samples()
-                    self.render_inpainting_samples()
+                    log_render = self.inv_render_samples()
+                    log_inpaint = self.render_inpainting_samples()
+                    if log_render is not None and log_inpaint is not None:
+                        wandb.log({**log_render, **log_inpaint})
                 elif self.model.__class__ == diffuser.models.diffusion.ActionGaussianDiffusion:
                     pass
                 else:
@@ -224,7 +228,7 @@ class Trainer(object):
         ####
 
         savepath = os.path.join('images', f'sample-reference.png')
-        self.renderer.composite(savepath, observations)
+        return self.renderer.composite(savepath, observations)
 
     def render_samples(self, batch_size=2, n_samples=2):
         '''
@@ -286,6 +290,7 @@ class Trainer(object):
         '''
             renders samples from (ema) diffusion model
         '''
+        log_entries = {}
         for i in range(batch_size):
 
             ## get a single datapoint
@@ -336,12 +341,17 @@ class Trainer(object):
             ####
 
             savepath = os.path.join('images', f'sample-{i}.png')
-            self.renderer.composite(savepath, observations)
+            log_entry = self.renderer.composite(savepath, observations)
+            if log_entry is not None:
+                log_entries.update(log_entry)
+        if len(log_entries) > 0:
+            return log_entries
 
     def render_inpainting_samples(self, batch_size=2, n_samples=2):
         '''
             renders samples from (ema) diffusion model
         '''
+        log_entries = {}
         for i in range(batch_size):
 
             # get a two random points in normalized space
@@ -394,4 +404,8 @@ class Trainer(object):
             ####
 
             savepath = os.path.join('images', f'inpainting_sample-{i}.png')
-            self.renderer.composite(savepath, observations)
+            log_entry = self.renderer.composite(savepath, observations)
+            if log_entry is not None:
+                log_entries.update(log_entry)
+        if len(log_entries) > 0:
+            return log_entries

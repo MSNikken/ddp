@@ -71,9 +71,11 @@ class PathRenderer(object):
 
         if savepath is not None:
             plt.savefig(savepath)
-            wandb.log({"image_samples": {savepath: wandb.Image(fig)}})
+            image = wandb.Image(fig)
+            #wandb.log({"image_samples": {savepath: wandb.Image(fig)}})
             plt.close(fig)
             print(f'Saved {len(paths)} samples to: {savepath}')
+            return {savepath: image}
 
 
 class MuJoCoRenderer:
