@@ -235,10 +235,12 @@ class SE3Diffusion(nn.Module):
         x_recon = self.model(x_noisy, cond, k, returns)
         H = pp.Exp(pp.se3(x_start[..., :6]))
         H_noisy = pp.Exp(pp.se3(x_noisy[..., :6]))
-        H_rel_recon = pp.se3(x_recon[..., :6])
-        H_rel = pp.Log(H @ H_noisy.Inv())
 
-        pose_loss, info = self.loss_fn(H_rel_recon, H_rel)
+        H_rel_recon = pp.se3(x_recon[..., :6]).Exp()
+        H_rel = H @ H_noisy.Inv()
+        H_delta = (H_rel @ H_rel_recon.Inv()).Log()
+
+        pose_loss, info = self.loss_fn(H_delta, torch.zeros_like(H_delta))
         vel_loss, info = self.loss_fn(x_recon[..., 6:12], x_start[..., 6:12])
         loss = pose_loss + vel_loss
         info = {"pose_loss": pose_loss, "vel_loss": vel_loss}
