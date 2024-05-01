@@ -110,20 +110,20 @@ class SE3Diffusion(nn.Module):
 
     # ------------------------------------------ sampling ------------------------------------------#
 
-    def predict_start_from_noise(self, x_t, t, noise):
+    def predict_start_from_noise(self, x_k, k, noise):
         '''
             if self.predict_epsilon, model output is (scaled) noise;
             otherwise, model predicts x0 directly
         '''
         if self.predict_epsilon:
             return (
-                    extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t -
-                    extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * noise
+                    extract(self.sqrt_recip_alphas_cumprod, k, x_k.shape) * x_k -
+                    extract(self.sqrt_recipm1_alphas_cumprod, k, x_k.shape) * noise
             )
         else:
             return noise
 
-    def q_posterior(self, x0: pp.se3_type, xk: pp.se3_type, k):
+    def q_posterior(self, x0, xk, k):
         posterior_mean = (
             extract(self.posterior_mean_coef1, k, x0.shape) * x0 +
             extract(self.posterior_mean_coef2, k, x0.shape) * xk
@@ -163,9 +163,13 @@ class SE3Diffusion(nn.Module):
         b, *_, device = *xk.shape, xk.device
         model_mean, posterior_variance, posterior_log_variance = self.p_mean_variance(xk, cond, k, returns)
         noise = 0.5 * self.gamma * torch.randn_like(xk)
-        # no noise when t == 0
+        # no noise when k == 0
         nonzero_mask = (1 - (k == 0).float()).reshape(b, *((1,) * (len(xk.shape) - 1)))
-        return model_mean + nonzero_mask * (0.5 * posterior_log_variance).exp() * noise
+        noise = nonzero_mask * noise
+        xk_1 = model_mean
+        xk_1[..., :6] = (pp.se3(noise[..., :6]).Exp() @ pp.se3(xk_1[..., :6]).Exp()).Log()
+        xk_1[..., 6:] = xk_1[..., 6:] + (0.5 * posterior_log_variance).exp() * noise[..., 6:]
+        return xk_1
 
     @torch.no_grad()
     def p_sample_loop(self, shape, cond, returns=None, verbose=True, return_diffusion=False):
