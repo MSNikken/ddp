@@ -15,6 +15,7 @@ gamma: 0.1
 
 # Training
 sample_freq: 10000
+loss_type: 'state_l2'
 
 # Representation/visualization
 renderer: 'utils.PathRenderer'

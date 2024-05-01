@@ -81,8 +81,7 @@ class SE3Diffusion(nn.Module):
 
         ## get loss coefficients and initialize objective
         loss_weights = self.get_loss_weights(loss_discount)
-        #self.loss_fn = Losses['state_l2'](loss_weights)
-        self.loss_fn = Losses['state_l1'](loss_weights)
+        self.loss_fn = Losses[loss_type](loss_weights)
 
     def get_loss_weights(self, discount):
         '''

@@ -50,7 +50,7 @@ class Config(ParamsProto):
 
     ## training
     n_steps_per_epoch = 10000
-    loss_type = 'l2'
+    loss_type = 'state_l2'
     n_train_steps = 1e6
     batch_size = 32
     learning_rate = 2e-4
