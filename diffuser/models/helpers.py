@@ -254,10 +254,30 @@ class ValueL2(ValueLoss):
         return F.mse_loss(pred, targ, reduction='none')
 
 
-class KinematicL2(WeightedStateLoss):
+class WeightedKinematicLoss(nn.Module):
 
-    def _loss(self, pred, targ):
-        return F.mse_loss(pred, targ, reduction='none')
+    def __init__(self, t_weights, k_weights):
+        super().__init__()
+        self.register_buffer('t_weights', t_weights)
+        self.register_buffer('k_weights', k_weights)
+
+    def forward(self, traj, k):
+        '''
+            pred, targ : tensor
+                [ batch_size x horizon x transition_dim ]
+        '''
+        loss = self._loss(traj)
+        weighted_loss = ((loss * self.t_weights).mean(dim=1)*self.k_weights[k]).mean()
+        return weighted_loss, {'kin_loss': weighted_loss}
+
+
+class KinematicL2(WeightedKinematicLoss):
+    def __init__(self, t_weights, k_weights, dt):
+        super().__init__(t_weights, k_weights)
+        self.dt = dt
+
+    def _loss(self, traj):
+        return kinematic_consistency(traj, self.dt)
 
 
 Losses = {
