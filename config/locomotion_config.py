@@ -46,7 +46,8 @@ class Config(ParamsProto):
     ar_inv = False
     train_only_inv = False
     termination_penalty = -100
-    returns_scale = 400.0 # Determined using rewards from the dataset
+    returns_scale = 400.0   # Determined using rewards from the dataset
+    dt = 0.08   # time step in seconds
 
     ## training
     n_steps_per_epoch = 10000
@@ -63,6 +64,8 @@ class Config(ParamsProto):
     save_parallel = False
     n_reference = 8
     save_checkpoints = False
+    kinematic_loss = False
+    kinematic_scale = 0
 
 
 config_file = os.environ.get('CONFIG')

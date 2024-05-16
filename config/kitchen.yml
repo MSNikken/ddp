@@ -4,7 +4,7 @@
 
 loader: 'datasets.GeneratedDataset'
 dataset: 'datasets.BSplineDefault'
-
+dt: 0.8
 normalizer: 'CDFNormalizer'
 
 
