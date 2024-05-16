@@ -2,6 +2,8 @@ import numpy as np
 import scipy.interpolate as interpolate
 import pdb
 
+import torch
+
 POINTMASS_KEYS = ['observations', 'actions', 'next_observations', 'deltas']
 
 #-----------------------------------------------------------------------------#
@@ -145,6 +147,8 @@ class GaussianNormalizer(Normalizer):
         return (x - self.means) / self.stds
 
     def unnormalize(self, x):
+        if type(x) is torch.Tensor:
+            return x * torch.tensor(self.stds, device=x.device) + torch.tensor(self.means, device=x.device)
         return x * self.stds + self.means
 
 
@@ -298,4 +302,3 @@ def atleast_2d(x):
     if x.ndim < 2:
         x = x[:,None]
     return x
-
