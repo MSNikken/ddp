@@ -66,6 +66,7 @@ class Config(ParamsProto):
     save_checkpoints = False
     kinematic_loss = False
     kinematic_scale = 0
+    max_kin_weight = 1e5
 
 
 config_file = os.environ.get('CONFIG')
