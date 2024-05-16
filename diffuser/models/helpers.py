@@ -106,7 +106,7 @@ def apply_conditioning(x, conditions, action_dim):
 # -----------------------------------------------------------------------------#
 # ------------------------ physical evaluation --------------------------------#
 # -----------------------------------------------------------------------------#
-def dist1(H1, H2):
+def dist_SE3(H1, H2):
     # At identity
     d1 = torch.linalg.vector_norm(pp.Log(H1 * H2.Inv()), dim=-1)
     d2 = torch.linalg.vector_norm(pp.Log(H2 * H1.Inv()), dim=-1)
@@ -118,35 +118,40 @@ def dist1(H1, H2):
     d5 = torch.linalg.vector_norm(pp.Log(H1) - pp.Log(H2), dim=-1)
     return d1
 
+
 def kinematic_consistency(x, dt):
-    x_t = x[:-1]
-    x_t_dt = x[1:]
+    x_t = x[..., :-1, :]
+    x_t_dt = x[..., 1:, :]
 
-    H_t = pp.Exp(pp.se3(x_t[:, :6]))
-    T_t = pp.se3(x_t[:, 6:])
+    H_t = pp.se3(x_t[..., :6]).Exp()
+    T_t = pp.se3(x_t[..., 6:])
+    forward = pp.Exp(T_t * (dt/2)) @ H_t
 
-    H_t_dt = pp.Exp(pp.se3(x_t_dt[:, :6]))
-    T_t_dt = pp.se3(x_t_dt[:, 6:])
+    H_t_dt = pp.se3(x_t_dt[..., :6]).Exp()
+    T_t_dt = pp.se3(x_t_dt[..., 6:])
+    backward = pp.Exp(T_t_dt * -(dt/2)) @ H_t_dt
 
-    # Basline dist
-    dist_base = torch.mean(dist1(H_t, H_t_dt))
-    # Forward/backward projection
-    H_forward = pp.Exp(pp.se3(T_t * dt / 2)) * H_t
-    H_backward = pp.Exp(pp.se3(T_t_dt * dt / -2)) * H_t_dt
-    dist_a1 = torch.mean(dist1(H_forward, H_t_dt))
+    diff = (forward @ backward.Inv()).Log()
+    return torch.sum(diff**2, dim=-1)
 
-    H_forward = pp.Exp(pp.se3(H_t.Adj(T_t) * dt / 2)) * H_t
-    H_backward = pp.Exp(pp.se3(H_t_dt.Adj(T_t_dt) * dt / -2)) * H_t_dt
-    dist_a2 = torch.mean(dist1(H_forward, H_t_dt))
-
-    H_forward = pp.Exp(pp.se3(H_t.Inv().Adj(T_t) * dt / 2)) * H_t
-    H_backward = pp.Exp(pp.se3(H_t_dt.Inv().Adj(T_t_dt) * dt / -2)) * H_t_dt
-    dist_a3 = torch.mean(dist1(H_forward, H_t_dt))
-
-    # Compare some variants:
-    from diffuser.utils.visualization import plot_trajectory
-    plot_trajectory(H_t)
-    return pp.Log(H_backward * H_forward.Inv())
+    # # Basline dist
+    # dist_base = torch.mean(dist1(H_t, H_t_dt))
+    # # Forward/backward projection
+    # H_forward = pp.Exp(pp.se3(T_t * dt / 2)) * H_t
+    # H_backward = pp.Exp(pp.se3(T_t_dt * dt / -2)) * H_t_dt
+    # dist_a1 = torch.mean(dist1(H_forward, H_t_dt))
+    #
+    # H_forward = pp.Exp(pp.se3(H_t.Adj(T_t) * dt / 2)) * H_t
+    # H_backward = pp.Exp(pp.se3(H_t_dt.Adj(T_t_dt) * dt / -2)) * H_t_dt
+    # dist_a2 = torch.mean(dist1(H_forward, H_t_dt))
+    #
+    # H_forward = pp.Exp(pp.se3(H_t.Inv().Adj(T_t) * dt / 2)) * H_t
+    # H_backward = pp.Exp(pp.se3(H_t_dt.Inv().Adj(T_t_dt) * dt / -2)) * H_t_dt
+    # dist_a3 = torch.mean(dist1(H_forward, H_t_dt))
+    #
+    # # Compare some variants:
+    # from diffuser.utils.visualization import plot_trajectory
+    # plot_trajectory(H_t)
 
 
 # -----------------------------------------------------------------------------#
@@ -249,6 +254,12 @@ class ValueL2(ValueLoss):
         return F.mse_loss(pred, targ, reduction='none')
 
 
+class KinematicL2(WeightedStateLoss):
+
+    def _loss(self, pred, targ):
+        return F.mse_loss(pred, targ, reduction='none')
+
+
 Losses = {
     'l1': WeightedL1,
     'l2': WeightedL2,
@@ -256,4 +267,5 @@ Losses = {
     'state_l1': WeightedStateL1,
     'value_l1': ValueL1,
     'value_l2': ValueL2,
+    'kinematic_l2': KinematicL2
 }

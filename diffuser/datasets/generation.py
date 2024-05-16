@@ -2,7 +2,7 @@ import numpy as np
 import torch, pypose as pp
 
 from diffuser.utils.visualization import plot_trajectory
-from diffuser.models.helpers import dist1
+from diffuser.models.helpers import dist_SE3, kinematic_consistency
 
 
 def approx_instant_twist(H, dt=1.0):
@@ -102,9 +102,12 @@ class SplineDataset(object):
 if __name__ == "__main__":
     gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
     paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
-    twists = approx_instant_twist(paths)
-    dist1(paths[...,:-1,:],paths[...,1:,:])
-    torch.mean(dist1(pp.Exp(twists[...,:-1,:]) @ paths[...,:-1,:],paths[...,1:,:]))
+    delta_t = 0.1
+    twists = approx_instant_twist(paths, delta_t)
+    x = torch.cat([paths.Log(), twists], dim=-1)
+    res = kinematic_consistency(x, delta_t)
+    dist_SE3(paths[..., :-1, :], paths[..., 1:, :])
+    torch.mean(dist_SE3(pp.Exp(twists[..., :-1, :]) @ paths[..., :-1, :], paths[..., 1:, :]))
     fig, ax = plot_trajectory(paths, show=False)
     ax.set_title('B spline')
     ax.set_xlim(0, 1)
