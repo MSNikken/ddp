@@ -111,7 +111,7 @@ class Trainer(object):
     #-----------------------------------------------------------------------------#
 
     def train(self, n_train_steps):
-        wandb.watch(self.model, log="all", log_freq=self.log_freq)
+        wandb.watch(self.model.model, log="all", log_freq=self.log_freq)
 
         timer = Timer()
         for step in range(n_train_steps):
