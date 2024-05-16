@@ -63,6 +63,11 @@ def main(**deps):
             loss_discount=Config.loss_discount,
             returns_condition=Config.returns_condition,
             condition_guidance_w=Config.condition_guidance_w,
+            # Kinematic loss
+            kinematic_loss=Config.kinematic_loss,
+            kinematic_scale=Config.kinematic_scale,
+            max_kin_weight=Config.max_kin_weight,
+            dt=Config.dt,
             device=Config.device,
         )
     elif Config.diffusion == 'models.SE3Diffusion':
@@ -87,6 +92,11 @@ def main(**deps):
             loss_discount=Config.loss_discount,
             returns_condition=Config.returns_condition,
             condition_guidance_w=Config.condition_guidance_w,
+            # Kinematic loss
+            kinematic_loss=Config.kinematic_loss,
+            kinematic_scale=Config.kinematic_scale,
+            max_kin_weight=Config.max_kin_weight,
+            dt=Config.dt,
             device=Config.device,
         )
     else:
@@ -106,6 +116,11 @@ def main(**deps):
             loss_discount=Config.loss_discount,
             returns_condition=Config.returns_condition,
             condition_guidance_w=Config.condition_guidance_w,
+            # Kinematic loss
+            kinematic_loss=Config.kinematic_loss,
+            kinematic_scale=Config.kinematic_scale,
+            max_kin_weight=Config.max_kin_weight,
+            dt=Config.dt,
             device=Config.device,
         )
 
@@ -162,7 +177,7 @@ def main(**deps):
 
     model = model_config()
 
-    diffusion = diffusion_config(model)
+    diffusion = diffusion_config(model, normalizer=dataset.normalizer)
 
     trainer = trainer_config(diffusion, dataset, renderer)
 

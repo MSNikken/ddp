@@ -11,13 +11,15 @@ from .helpers import (
     apply_conditioning,
     Losses,
 )
+from ..datasets.lie import traj_euc2se3
 
 
 class GaussianDiffusion(nn.Module):
     def __init__(self, model, horizon, observation_dim, action_dim, n_diffsteps=1000,
                  loss_type='l1', clip_denoised=False, predict_epsilon=True,
                  action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
-                 condition_guidance_w=0.1):
+                 condition_guidance_w=0.1, kinematic_loss=False, dt=1,
+                 normalizer=None):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
@@ -289,11 +291,13 @@ class GaussianDiffusion(nn.Module):
     def forward(self, cond, *args, **kwargs):
         return self.conditional_sample(cond=cond, *args, **kwargs)
 
+
 class GaussianInvDynDiffusion(nn.Module):
     def __init__(self, model, horizon, observation_dim, action_dim, n_diffsteps=1000,
                  loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
                  action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
-                 condition_guidance_w=0.1, ar_inv=False, train_only_inv=False):
+                 condition_guidance_w=0.1, ar_inv=False, train_only_inv=False, kinematic_loss=False, kinematic_scale=1,
+                 max_kin_weight=1000, dt=1, normalizer=None):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
@@ -351,6 +355,17 @@ class GaussianInvDynDiffusion(nn.Module):
         ## get loss coefficients and initialize objective
         loss_weights = self.get_loss_weights(loss_discount)
         self.loss_fn = Losses['state_l2'](loss_weights)
+
+        # kinematic loss
+        assert not kinematic_loss or (normalizer is not None)
+        self.kinematic_loss = kinematic_loss
+        self.normalizer = normalizer
+
+        shift = 1/(kinematic_scale*np.sqrt(2*max_kin_weight))
+        kin_weights = 1/(2 * (kinematic_scale * (posterior_variance + shift))**2)
+
+        self.loss_fn_kin = Losses['kinematic_l2'](loss_weights[1:, 0], kin_weights, dt)
+
 
     def get_loss_weights(self, discount):
         '''
@@ -481,23 +496,32 @@ class GaussianInvDynDiffusion(nn.Module):
 
         return sample
 
-    def p_losses(self, x_start, cond, t, returns=None):
+    def p_losses(self, x_start, cond, k, returns=None):
         noise = torch.randn_like(x_start)
 
-        x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+        x_noisy = self.q_sample(x_start=x_start, t=k, noise=noise)
         x_noisy = apply_conditioning(x_noisy, cond, 0)
 
-        x_recon = self.model(x_noisy, cond, t, returns)
+        prediction = self.model(x_noisy, cond, k, returns)
 
         if not self.predict_epsilon:
-            x_recon = apply_conditioning(x_recon, cond, 0)
+            prediction = apply_conditioning(prediction, cond, 0)
 
-        assert noise.shape == x_recon.shape
+        assert noise.shape == prediction.shape
 
         if self.predict_epsilon:
-            loss, info = self.loss_fn(x_recon, noise)
+            loss, info = self.loss_fn(prediction, noise)
         else:
-            loss, info = self.loss_fn(x_recon, x_start)
+            loss, info = self.loss_fn(prediction, x_start)
+
+        if self.kinematic_loss:
+            x_recon = prediction
+            if self.predict_epsilon:
+                x_recon = self.predict_start_from_noise(x_noisy, k, prediction)
+            traj = traj_euc2se3(self.normalizer.unnormalize(x_recon, 'observations'))
+            kin_loss, kin_info = self.loss_fn_kin(traj, k)
+            loss = loss + kin_loss
+            info.update(kin_info)
 
         return loss, info
 
@@ -626,7 +650,8 @@ class ActionGaussianDiffusion(nn.Module):
     def __init__(self, model, horizon, observation_dim, action_dim, n_timesteps=1000,
         loss_type='l1', clip_denoised=False, predict_epsilon=True,
         action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
-        condition_guidance_w=0.1,):
+        condition_guidance_w=0.1, kinematic_loss=False, dt=1,
+                 normalizer=None):
         super().__init__()
         self.observation_dim = observation_dim
         self.action_dim = action_dim

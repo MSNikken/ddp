@@ -23,7 +23,8 @@ class SE3Diffusion(nn.Module):
     def __init__(self, model, horizon, observation_dim, action_dim, n_diffsteps=1000,
                  loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
                  action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
-                 condition_guidance_w=0.1, gamma=1, ar_inv=False, train_only_inv=False):
+                 condition_guidance_w=0.1, gamma=1, ar_inv=False, train_only_inv=False, kinematic_loss=False, dt=1,
+                 normalizer=None):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
