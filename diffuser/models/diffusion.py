@@ -557,6 +557,8 @@ class GaussianInvDynDiffusion(nn.Module):
             else:
                 pred_a_t = self.inv_model(x_comb_t)
                 inv_loss = F.mse_loss(pred_a_t, a_t)
+                if inv_loss.isnan():    # No actions loaded
+                    inv_loss = 0
 
             loss = (1 / 2) * (diffuse_loss + inv_loss)
 
