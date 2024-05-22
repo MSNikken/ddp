@@ -8,4 +8,4 @@ def traj_euc2se3(x: torch.Tensor):
     traj_rot = torch.nn.functional.normalize(traj_rot, dim=-1)
     traj_pose = pp.SE3(torch.cat([traj_pos, traj_rot], dim=-1)).Log()
     traj_twist = x[..., :, 7:13]
-    return torch.cat([traj_pose, traj_twist], dim=-1)
+    return torch.cat([traj_pose.tensor(), traj_twist], dim=-1)
