@@ -16,7 +16,7 @@ def interpolate(H1: pp.SE3_type, H2: pp.SE3_type, scale: Union[float, torch.Tens
 
 
 def interpolate_sqrt_alphas_cumprod(H, sqrt_alphas_cumprod):
-    return interpolate(H, pp.identity_like(H, device=H.device), 1 - sqrt_alphas_cumprod)
+    return interpolate(H, pp.identity_like(H, device=H.device, dtype=H.dtype), 1 - sqrt_alphas_cumprod)
 
 
 class SE3Diffusion(nn.Module):
