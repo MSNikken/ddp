@@ -68,7 +68,7 @@ def main(**deps):
             kinematic_scale=Config.kinematic_scale,
             max_kin_weight=Config.max_kin_weight,
             dt=Config.dt,
-            device=Config.device,
+            device=torch.device(Config.device),
         )
     elif Config.diffusion == 'models.SE3Diffusion':
         diffusion_config = utils.Config(
@@ -97,7 +97,7 @@ def main(**deps):
             kinematic_scale=Config.kinematic_scale,
             max_kin_weight=Config.max_kin_weight,
             dt=Config.dt,
-            device=Config.device,
+            device=torch.device(Config.device),
         )
     else:
         diffusion_config = utils.Config(
@@ -121,7 +121,7 @@ def main(**deps):
             kinematic_scale=Config.kinematic_scale,
             max_kin_weight=Config.max_kin_weight,
             dt=Config.dt,
-            device=Config.device,
+            device=torch.device(Config.device),
         )
 
     if Config.diffusion == 'models.GaussianInvDynDiffusion' or Config.diffusion == 'models.SE3Diffusion':
@@ -136,7 +136,7 @@ def main(**deps):
             dim=Config.dim,
             condition_dropout=Config.condition_dropout,
             calc_energy=Config.calc_energy,
-            device=Config.device,
+            device=torch.device(Config.device),
         )
     else:
         model_config = utils.Config(
@@ -150,7 +150,7 @@ def main(**deps):
             dim=Config.dim,
             condition_dropout=Config.condition_dropout,
             calc_energy=Config.calc_energy,
-            device=Config.device,
+            device=torch.device(Config.device),
         )
 
     trainer_config = utils.Config(
@@ -167,7 +167,7 @@ def main(**deps):
         save_parallel=Config.save_parallel,
         bucket=Config.bucket,
         n_reference=Config.n_reference,
-        train_device=Config.device,
+        train_device=torch.device(Config.device),
         save_checkpoints=Config.save_checkpoints,
     )
 
