@@ -267,8 +267,9 @@ class WeightedKinematicLoss(nn.Module):
                 [ batch_size x horizon x transition_dim ]
         '''
         loss = self._loss(traj)
-        weighted_loss = ((loss * self.t_weights).mean(dim=1)*self.k_weights[k]).mean()
-        return weighted_loss, {'kin_loss': weighted_loss}
+        weighted_loss = ((loss * self.t_weights).mean(dim=1)*self.k_weights[k])
+        max_loss, max_index = weighted_loss.max()
+        return weighted_loss.mean(), {'kin_loss': weighted_loss, 'k_max_loss': max_loss, 'max_loss': k[max_index]}
 
 
 class KinematicL2(WeightedKinematicLoss):
