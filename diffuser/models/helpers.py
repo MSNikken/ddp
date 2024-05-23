@@ -271,8 +271,9 @@ class WeightedKinematicLoss(nn.Module):
         max_index = weighted_loss.argmax()
         mean_loss = weighted_loss.mean()
         return mean_loss, {'kin_loss': mean_loss,
-                                      'max_loss': weighted_loss[max_index],
-                                      'k_max_loss': k[max_index]}
+                           'max_loss': weighted_loss[max_index],
+                           'k_max_loss': k[max_index]
+                           }
 
 
 class KinematicL2(WeightedKinematicLoss):

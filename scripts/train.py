@@ -67,6 +67,7 @@ def main(**deps):
             kinematic_loss=Config.kinematic_loss,
             kinematic_scale=Config.kinematic_scale,
             max_kin_weight=Config.max_kin_weight,
+            kin_weight_cutoff=Config.kin_weight_cutoff,
             dt=Config.dt,
             device=torch.device(Config.device),
         )
