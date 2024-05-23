@@ -16,8 +16,10 @@ returns_condition: False
 sample_freq: 10000
 loss_type: 'state_l2'
 kinematic_loss: True
-kinematic_scale: 50
-max_kin_weight: 10
+kinematic_scale: 100
+max_kin_weight: 0.3
+kin_weight_cutoff: 150
+n_train_steps: 200000
 
 # Representation/visualization
 renderer: 'utils.PathRenderer'
