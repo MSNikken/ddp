@@ -254,10 +254,15 @@ class WeightedKinematicLoss(nn.Module):
         loss = self._loss(traj)
         weighted_loss = ((loss * self.t_weights).mean(dim=1)*self.k_weights[k])
         max_index = weighted_loss.argmax()
+        min_index = weighted_loss.argmin()
         mean_loss = weighted_loss.mean()
         return mean_loss, {'kin_loss': mean_loss,
                            'max_loss': weighted_loss[max_index],
-                           'k_max_loss': k[max_index]
+                           'min_loss': weighted_loss[min_index],
+                           'k_max_loss': k[max_index],
+                           'k_min_loss': k[min_index],
+                           'k_min': k.min(),
+                           'k_max': k.max(),
                            }
 
 
