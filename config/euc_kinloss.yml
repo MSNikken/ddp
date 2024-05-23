@@ -19,7 +19,8 @@ kinematic_loss: True
 kinematic_scale: 100
 max_kin_weight: 0.3
 kin_weight_cutoff: 150
-n_train_steps: 200000
+kin_norm: False
+n_train_steps: 100000
 
 # Representation/visualization
 renderer: 'utils.PathRenderer'

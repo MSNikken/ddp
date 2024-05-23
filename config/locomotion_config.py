@@ -68,6 +68,7 @@ class Config(ParamsProto):
     kinematic_scale = 0
     max_kin_weight = 1e5
     kin_weight_cutoff = -1
+    kin_norm = False
 
 
 config_file = os.environ.get('CONFIG')

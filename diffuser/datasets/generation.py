@@ -106,6 +106,7 @@ if __name__ == "__main__":
     twists = approx_instant_twist(paths, delta_t)
     x = torch.cat([paths.Log(), twists], dim=-1)
     res = kinematic_consistency(x, delta_t)
+    res_norm = kinematic_consistency(x, delta_t, norm=True)
     dist_SE3(paths[..., :-1, :], paths[..., 1:, :])
     torch.mean(dist_SE3(pp.Exp(twists[..., :-1, :]) @ paths[..., :-1, :], paths[..., 1:, :]))
     fig, ax = plot_trajectory(paths, show=False)

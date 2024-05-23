@@ -119,7 +119,7 @@ def dist_SE3(H1, H2):
     return d1
 
 
-def kinematic_consistency(x, dt):
+def kinematic_consistency(x, dt, norm=False):
     x_t = x[..., :-1, :]
     x_t_dt = x[..., 1:, :]
 
@@ -131,27 +131,12 @@ def kinematic_consistency(x, dt):
     T_t_dt = pp.se3(x_t_dt[..., 6:])
     backward = pp.Exp(T_t_dt * -(dt/2)) @ H_t_dt
 
-    diff = (forward @ backward.Inv()).Log()
-    return torch.sum(diff**2, dim=-1)
-
-    # # Basline dist
-    # dist_base = torch.mean(dist1(H_t, H_t_dt))
-    # # Forward/backward projection
-    # H_forward = pp.Exp(pp.se3(T_t * dt / 2)) * H_t
-    # H_backward = pp.Exp(pp.se3(T_t_dt * dt / -2)) * H_t_dt
-    # dist_a1 = torch.mean(dist1(H_forward, H_t_dt))
-    #
-    # H_forward = pp.Exp(pp.se3(H_t.Adj(T_t) * dt / 2)) * H_t
-    # H_backward = pp.Exp(pp.se3(H_t_dt.Adj(T_t_dt) * dt / -2)) * H_t_dt
-    # dist_a2 = torch.mean(dist1(H_forward, H_t_dt))
-    #
-    # H_forward = pp.Exp(pp.se3(H_t.Inv().Adj(T_t) * dt / 2)) * H_t
-    # H_backward = pp.Exp(pp.se3(H_t_dt.Inv().Adj(T_t_dt) * dt / -2)) * H_t_dt
-    # dist_a3 = torch.mean(dist1(H_forward, H_t_dt))
-    #
-    # # Compare some variants:
-    # from diffuser.utils.visualization import plot_trajectory
-    # plot_trajectory(H_t)
+    diff = torch.sum((forward @ backward.Inv()).Log()**2, dim=-1)
+    consistency = diff
+    if norm:
+        transition = torch.sum((H_t @ H_t_dt.Inv()).Log()**2, dim=-1)
+        consistency = diff/transition
+    return consistency
 
 
 # -----------------------------------------------------------------------------#
@@ -277,12 +262,13 @@ class WeightedKinematicLoss(nn.Module):
 
 
 class KinematicL2(WeightedKinematicLoss):
-    def __init__(self, t_weights, k_weights, dt):
+    def __init__(self, t_weights, k_weights, dt, norm=False):
         super().__init__(t_weights, k_weights)
         self.dt = dt
+        self.norm = norm
 
     def _loss(self, traj):
-        return kinematic_consistency(traj, self.dt)
+        return kinematic_consistency(traj, self.dt, norm=self.norm)
 
 
 Losses = {
