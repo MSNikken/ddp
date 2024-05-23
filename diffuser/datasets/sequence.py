@@ -318,9 +318,9 @@ class GeneratedDataset(object):
 
     def get_conditions(self, observations):
         '''
-            condition on current observation for planning
+            condition on current and final observation for planning
         '''
-        return {0: observations[0]}
+        return {0: observations[0], observations.shape[0]-1: observations[-1]}
 
     def __len__(self):
         return len(self.indices)
