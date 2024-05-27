@@ -254,7 +254,8 @@ class WeightedKinematicLoss(nn.Module):
         loss = self._loss(traj)
         weighted_loss = ((loss * self.t_weights).mean(dim=1)*self.k_weights[k])
         max_index = weighted_loss.argmax()
-        min_index = weighted_loss.argmin()
+        # Search for minimum loss among nonzero weights
+        min_index = torch.where((self.k_weights[k] != 0), weighted_loss, 1e10).argmin()
         mean_loss = weighted_loss.mean()
         return mean_loss, {'kin_loss': mean_loss,
                            'max_loss': weighted_loss[max_index],

@@ -18,8 +18,8 @@ loss_type: 'state_l2'
 kinematic_loss: True
 kinematic_scale: 100
 max_kin_weight: 0.3
-kin_weight_cutoff: 150
-kin_norm: False
+kin_weight_cutoff: 50
+kin_norm: True
 n_train_steps: 100000
 
 # Representation/visualization
