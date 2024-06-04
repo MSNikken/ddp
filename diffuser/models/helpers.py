@@ -131,10 +131,10 @@ def kinematic_consistency(x, dt, norm=False):
     T_t_dt = pp.se3(x_t_dt[..., 6:])
     backward = pp.Exp(T_t_dt * -(dt/2)) @ H_t_dt
 
-    diff = torch.sum((forward @ backward.Inv()).Log()**2, dim=-1)
+    diff = torch.linalg.vector_norm((forward @ backward.Inv()).Log(), dim=-1)
     consistency = diff
     if norm:
-        transition = torch.sum((H_t @ H_t_dt.Inv()).Log()**2, dim=-1)
+        transition = torch.linalg.vector_norm((H_t @ H_t_dt.Inv()).Log(), dim=-1)
         consistency = diff/transition
     return consistency
 
@@ -147,11 +147,11 @@ def kinematic_pose_consistency(x, norm=False):
     forward_midpoint = H_t @ ((H_t.Inv() @ H_t_2).Log() * 1/2).Exp()
     backward_midpoint = H_t_2 @ ((H_t_2.Inv() @ H_t).Log() * 1/2).Exp()
 
-    diff_forward = torch.sum((H_t_1.Inv() @ forward_midpoint).Log() ** 2, dim=-1)
-    diff_backward = torch.sum((H_t_1.Inv() @ backward_midpoint).Log() ** 2, dim=-1)
+    diff_forward = torch.linalg.vector_norm((H_t_1.Inv() @ forward_midpoint).Log(), dim=-1)
+    diff_backward = torch.linalg.vector_norm((H_t_1.Inv() @ backward_midpoint).Log(), dim=-1)
     consistency = diff_forward
     if norm:
-        transition_length_sq = torch.sum(((H_t.Inv() @ H_t_2).Log()*1/2)**2, dim=-1)
+        transition_length_sq = torch.linalg.vector_norm(((H_t.Inv() @ H_t_2).Log()*1/2), dim=-1)
         consistency = consistency/transition_length_sq
     return consistency
 
@@ -303,6 +303,25 @@ class KinematicPoseL2(WeightedKinematicLoss):
         return kinematic_consistency(traj, self.dt, norm=self.norm)
 
 
+class KinematicLInf(WeightedKinematicLoss):
+    def __init__(self, t_weights, k_weights, dt, norm=False):
+        super().__init__(t_weights, k_weights)
+        self.dt = dt
+        self.norm = norm
+
+    def _loss(self, traj):
+        return kinematic_consistency(traj, self.dt, norm=self.norm, order=float('inf'))
+
+
+class KinematicPoseLInf(WeightedKinematicLoss):
+    def __init__(self, t_weights, k_weights, norm=False):
+        super().__init__(t_weights, k_weights)
+        self.norm = norm
+
+    def _loss(self, traj):
+        return kinematic_consistency(traj, self.dt, norm=self.norm, order=float('inf'))
+
+
 Losses = {
     'l1': WeightedL1,
     'l2': WeightedL2,
@@ -311,5 +330,7 @@ Losses = {
     'value_l1': ValueL1,
     'value_l2': ValueL2,
     'kinematic_l2': KinematicL2,
-    'kinematic_pose_l2': KinematicPoseL2
+    'kinematic_pose_l2': KinematicPoseL2,
+    'kinematic_linf': KinematicLInf,
+    'kinematic_pose_linf': KinematicPoseLInf
 }

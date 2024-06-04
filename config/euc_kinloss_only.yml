@@ -15,12 +15,14 @@ returns_condition: False
 
 # Training
 sample_freq: 10000
+data_loss: False
 loss_type: 'state_l2'
 kinematic_loss: 'kinematic_l2'
 kinematic_scale: 1000
 max_kin_weight: 20000
-kin_weight_cutoff: 50
+kin_weight_cutoff: 199
 n_train_steps: 60000
+
 
 # Representation/visualization
 renderer: 'utils.PathRenderer'

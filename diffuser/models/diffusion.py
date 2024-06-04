@@ -297,7 +297,8 @@ class GaussianInvDynDiffusion(nn.Module):
                  loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
                  action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
                  condition_guidance_w=0.1, ar_inv=False, train_only_inv=False, kinematic_loss=False, kinematic_scale=1,
-                 max_kin_weight=1000, kin_weight_cutoff=-1, kin_norm=False, dt=1, normalizer=None, pose_only=False):
+                 max_kin_weight=1000, kin_weight_cutoff=-1, kin_norm=False, dt=1, normalizer=None, pose_only=False,
+                 data_loss=True):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
@@ -356,6 +357,7 @@ class GaussianInvDynDiffusion(nn.Module):
         loss_weights = self.get_loss_weights(loss_discount)
         self.loss_fn = Losses['state_l2'](loss_weights)
 
+        self.data_loss = data_loss
         # kinematic loss
         assert not kinematic_loss or (normalizer is not None)
         self.pose_only = pose_only
@@ -523,7 +525,8 @@ class GaussianInvDynDiffusion(nn.Module):
             traj = traj_euc2se3(self.normalizer.unnormalize(x_recon, 'observations'), twist=not self.pose_only)
             kin_loss, kin_info = self.loss_fn_kin(traj, k)
             loss = loss + kin_loss
-            loss = kin_loss
+            if not self.data_loss:
+                loss = kin_loss
             info.update(kin_info)
 
         return loss, info

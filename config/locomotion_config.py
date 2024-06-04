@@ -70,6 +70,7 @@ class Config(ParamsProto):
     max_kin_weight = 1e5
     kin_weight_cutoff = -1
     kin_norm = False
+    data_loss = True
 
 
 config_file = os.environ.get('CONFIG')

@@ -70,6 +70,7 @@ def main(**deps):
             kin_weight_cutoff=Config.kin_weight_cutoff,
             dt=Config.dt,
             pose_only=Config.pose_only,
+            data_loss=Config.data_loss,
             device=torch.device(Config.device),
         )
     elif Config.diffusion == 'models.SE3Diffusion':
