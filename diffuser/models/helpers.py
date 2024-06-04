@@ -139,6 +139,23 @@ def kinematic_consistency(x, dt, norm=False):
     return consistency
 
 
+def kinematic_pose_consistency(x, norm=False):
+    H_t = pp.se3(x[..., :-2, :6]).Exp()
+    H_t_1 = pp.se3(x[..., 1:-1, :6]).Exp()
+    H_t_2 = pp.se3(x[..., 2:, :6]).Exp()
+
+    forward_midpoint = H_t @ ((H_t.Inv() @ H_t_2).Log() * 1/2).Exp()
+    backward_midpoint = H_t_2 @ ((H_t_2.Inv() @ H_t).Log() * 1/2).Exp()
+
+    diff_forward = torch.sum((H_t_1.Inv() @ forward_midpoint).Log() ** 2, dim=-1)
+    diff_backward = torch.sum((H_t_1.Inv() @ backward_midpoint).Log() ** 2, dim=-1)
+    consistency = diff_forward
+    if norm:
+        transition_length_sq = torch.sum(((H_t.Inv() @ H_t_2).Log()*1/2)**2, dim=-1)
+        consistency = consistency/transition_length_sq
+    return consistency
+
+
 # -----------------------------------------------------------------------------#
 # ---------------------------------- losses -----------------------------------#
 # -----------------------------------------------------------------------------#
@@ -277,6 +294,15 @@ class KinematicL2(WeightedKinematicLoss):
         return kinematic_consistency(traj, self.dt, norm=self.norm)
 
 
+class KinematicPoseL2(WeightedKinematicLoss):
+    def __init__(self, t_weights, k_weights, norm=False):
+        super().__init__(t_weights, k_weights)
+        self.norm = norm
+
+    def _loss(self, traj):
+        return kinematic_consistency(traj, self.dt, norm=self.norm)
+
+
 Losses = {
     'l1': WeightedL1,
     'l2': WeightedL2,
@@ -284,5 +310,6 @@ Losses = {
     'state_l1': WeightedStateL1,
     'value_l1': ValueL1,
     'value_l2': ValueL2,
-    'kinematic_l2': KinematicL2
+    'kinematic_l2': KinematicL2,
+    'kinematic_pose_l2': KinematicPoseL2
 }

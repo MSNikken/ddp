@@ -297,7 +297,7 @@ class GaussianInvDynDiffusion(nn.Module):
                  loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
                  action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
                  condition_guidance_w=0.1, ar_inv=False, train_only_inv=False, kinematic_loss=False, kinematic_scale=1,
-                 max_kin_weight=1000, kin_weight_cutoff=-1, kin_norm=False, dt=1, normalizer=None):
+                 max_kin_weight=1000, kin_weight_cutoff=-1, kin_norm=False, dt=1, normalizer=None, pose_only=False):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
@@ -358,16 +358,16 @@ class GaussianInvDynDiffusion(nn.Module):
 
         # kinematic loss
         assert not kinematic_loss or (normalizer is not None)
+        self.pose_only = pose_only
         self.kinematic_loss = kinematic_loss
         self.normalizer = normalizer
 
         # weights: scale, spread
         shift = 1/(kinematic_scale*np.sqrt(2*max_kin_weight))
-        kin_weights = 1/(2 * (kinematic_scale * (posterior_variance + shift))**2)
-        kin_weights[kin_weight_cutoff:] = 0
-
-        self.loss_fn_kin = Losses['kinematic_l2'](loss_weights[1:, 0], kin_weights, dt, norm=kin_norm)
-
+        k_weights = 1/(2 * (kinematic_scale * (posterior_variance + shift))**2)
+        k_weights[kin_weight_cutoff:] = 0
+        t_weights = loss_weights[2:, 0] if pose_only else loss_weights[1:, 0]
+        self.loss_fn_kin = Losses[kinematic_loss](t_weights, k_weights, dt, norm=kin_norm)
 
     def get_loss_weights(self, discount):
         '''
@@ -520,9 +520,10 @@ class GaussianInvDynDiffusion(nn.Module):
             x_recon = prediction
             if self.predict_epsilon:
                 x_recon = self.predict_start_from_noise(x_noisy, k, prediction)
-            traj = traj_euc2se3(self.normalizer.unnormalize(x_recon, 'observations'))
+            traj = traj_euc2se3(self.normalizer.unnormalize(x_recon, 'observations'), twist=not self.pose_only)
             kin_loss, kin_info = self.loss_fn_kin(traj, k)
             loss = loss + kin_loss
+            loss = kin_loss
             info.update(kin_info)
 
         return loss, info

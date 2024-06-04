@@ -6,6 +6,7 @@ loader: 'datasets.GeneratedDataset'
 dataset: 'datasets.BSplineDefault'
 dt: 0.08
 normalizer: 'GaussianNormalizer'
+pose_only: True
 
 
 # Model
@@ -15,7 +16,7 @@ returns_condition: False
 # Training
 sample_freq: 10000
 loss_type: 'state_l2'
-kinematic_loss: 'kinematic_l2'
+kinematic_loss: True
 kinematic_scale: 100
 max_kin_weight: 0.3
 kin_weight_cutoff: 50

@@ -69,6 +69,7 @@ def main(**deps):
             max_kin_weight=Config.max_kin_weight,
             kin_weight_cutoff=Config.kin_weight_cutoff,
             dt=Config.dt,
+            pose_only=Config.pose_only,
             device=torch.device(Config.device),
         )
     elif Config.diffusion == 'models.SE3Diffusion':

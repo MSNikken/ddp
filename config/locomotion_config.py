@@ -48,6 +48,7 @@ class Config(ParamsProto):
     termination_penalty = -100
     returns_scale = 400.0   # Determined using rewards from the dataset
     dt = 0.08   # time step in seconds
+    pose_only = False
 
     ## training
     n_steps_per_epoch = 10000
