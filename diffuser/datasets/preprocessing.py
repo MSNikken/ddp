@@ -131,7 +131,16 @@ def cart_to_se3(env):
     def _fn(dataset):
         pose = pp.Log(pp.SE3(dataset['observations'][:, :7]))
         vel = dataset['observations'][:, 7:13]
-        twist = pp.se3(vel)
+
+        from diffuser.datasets.generation import approx_instant_twist
+        twist_approx = approx_instant_twist(pp.SE3(dataset['observations'][:183, :7][None, :]), dt=0.08)[0]
+
+
+        R = pp.SO3(dataset['observations'][:, 3:7])
+        t = vel[:, :3]
+        delta = vel[:, 3:]
+        tau = R.Jinvp(pp.so3(t))
+        twist = pp.se3(np.concatenate((tau.numpy(), delta), axis=1))
         pose_twist = np.concatenate((pose, twist), axis=1)
         dataset['observations'] = np.concatenate((pose_twist, dataset['observations'][:, 13:]), axis=1)
 
