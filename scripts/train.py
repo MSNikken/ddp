@@ -64,13 +64,14 @@ def main(**deps):
             returns_condition=Config.returns_condition,
             condition_guidance_w=Config.condition_guidance_w,
             # Kinematic loss
-            kinematic_loss=Config.kinematic_loss,
+            train_kinematic_loss=Config.train_kinematic_loss,
+            kinematic_loss_type=Config.kinematic_loss_type,
             kinematic_scale=Config.kinematic_scale,
             max_kin_weight=Config.max_kin_weight,
             kin_weight_cutoff=Config.kin_weight_cutoff,
             dt=Config.dt,
             pose_only=Config.pose_only,
-            data_loss=Config.data_loss,
+            train_data_loss=Config.train_data_loss,
             device=torch.device(Config.device),
         )
     elif Config.diffusion == 'models.SE3Diffusion':

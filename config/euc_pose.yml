@@ -16,7 +16,7 @@ returns_condition: False
 # Training
 sample_freq: 10000
 loss_type: 'state_l2'
-kin_norm: True
+train_data_loss: True
 n_train_steps: 60000
 
 # Representation/visualization

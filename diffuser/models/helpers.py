@@ -144,14 +144,14 @@ def kinematic_pose_consistency(x, norm=False):
     H_t_1 = pp.se3(x[..., 1:-1, :6]).Exp()
     H_t_2 = pp.se3(x[..., 2:, :6]).Exp()
 
-    forward_midpoint = H_t @ ((H_t.Inv() @ H_t_2).Log() * 1/2).Exp()
-    backward_midpoint = H_t_2 @ ((H_t_2.Inv() @ H_t).Log() * 1/2).Exp()
+    forward_midpoint = H_t @ ((H_t.Inv() @ H_t_2).Log() * 0.5).Exp()
+    backward_midpoint = H_t_2 @ ((H_t_2.Inv() @ H_t).Log() * 0.5).Exp()
 
     diff_forward = torch.linalg.vector_norm((H_t_1.Inv() @ forward_midpoint).Log(), dim=-1)
     diff_backward = torch.linalg.vector_norm((H_t_1.Inv() @ backward_midpoint).Log(), dim=-1)
     consistency = diff_forward
     if norm:
-        transition_length_sq = torch.linalg.vector_norm(((H_t.Inv() @ H_t_2).Log()*1/2), dim=-1)
+        transition_length_sq = torch.linalg.vector_norm(((H_t.Inv() @ H_t_2).Log()*0.5), dim=-1)
         consistency = consistency/transition_length_sq
     return consistency
 
@@ -291,16 +291,18 @@ class KinematicL2(WeightedKinematicLoss):
         self.norm = norm
 
     def _loss(self, traj):
-        return kinematic_consistency(traj, self.dt, norm=self.norm)
+        score = kinematic_consistency(traj, self.dt, norm=self.norm)
+        return F.mse_loss(score, torch.zeros_like(score), reduction='none')
 
 
 class KinematicPoseL2(WeightedKinematicLoss):
-    def __init__(self, t_weights, k_weights, norm=False):
+    def __init__(self, t_weights, k_weights, dt, norm=False):
         super().__init__(t_weights, k_weights)
         self.norm = norm
 
     def _loss(self, traj):
-        return kinematic_consistency(traj, self.dt, norm=self.norm)
+        score = kinematic_pose_consistency(traj, norm=self.norm)
+        return F.mse_loss(score, torch.zeros_like(score), reduction='none')
 
 
 class KinematicLInf(WeightedKinematicLoss):
@@ -310,16 +312,21 @@ class KinematicLInf(WeightedKinematicLoss):
         self.norm = norm
 
     def _loss(self, traj):
-        return kinematic_consistency(traj, self.dt, norm=self.norm, order=float('inf'))
+        score = kinematic_consistency(traj, self.dt, norm=self.norm)
+        max, max_i = torch.max(score)
+        return F.mse_loss(torch.where(score == max, score, 0), torch.zeros_like(score), reduction='none')
 
 
 class KinematicPoseLInf(WeightedKinematicLoss):
-    def __init__(self, t_weights, k_weights, norm=False):
+    def __init__(self, t_weights, k_weights, dt, norm=False):
         super().__init__(t_weights, k_weights)
         self.norm = norm
 
     def _loss(self, traj):
-        return kinematic_consistency(traj, self.dt, norm=self.norm, order=float('inf'))
+        score = kinematic_pose_consistency(traj, norm=self.norm)
+        max, max_i = torch.max(score)
+        return F.mse_loss(torch.where(score == max, score, 0), torch.zeros_like(score), reduction='none')
+
 
 
 Losses = {

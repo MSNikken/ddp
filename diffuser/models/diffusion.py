@@ -296,9 +296,9 @@ class GaussianInvDynDiffusion(nn.Module):
     def __init__(self, model, horizon, observation_dim, action_dim, n_diffsteps=1000,
                  loss_type='l1', clip_denoised=False, predict_epsilon=True, hidden_dim=256,
                  action_weight=1.0, loss_discount=1.0, loss_weights=None, returns_condition=False,
-                 condition_guidance_w=0.1, ar_inv=False, train_only_inv=False, kinematic_loss=False, kinematic_scale=1,
-                 max_kin_weight=1000, kin_weight_cutoff=-1, kin_norm=False, dt=1, normalizer=None, pose_only=False,
-                 data_loss=True):
+                 condition_guidance_w=0.1, ar_inv=False, train_only_inv=False, train_kinematic_loss=False,
+                 kinematic_loss_type=None, kinematic_scale=1, max_kin_weight=1000, kin_weight_cutoff=-1, kin_norm=False, dt=1, normalizer=None, pose_only=False,
+                 train_data_loss=True):
         super().__init__()
         self.horizon = horizon
         self.observation_dim = observation_dim
@@ -357,19 +357,23 @@ class GaussianInvDynDiffusion(nn.Module):
         loss_weights = self.get_loss_weights(loss_discount)
         self.loss_fn = Losses['state_l2'](loss_weights)
 
-        self.data_loss = data_loss
+        self.train_data_loss = train_data_loss
         # kinematic loss
-        assert not kinematic_loss or (normalizer is not None)
+        assert kinematic_loss_type is None or (normalizer is not None)
         self.pose_only = pose_only
-        self.kinematic_loss = kinematic_loss
+        self.train_kinematic_loss = train_kinematic_loss
+        self.kinematic_loss_type = kinematic_loss_type
         self.normalizer = normalizer
 
-        # weights: scale, spread
-        shift = 1/(kinematic_scale*np.sqrt(2*max_kin_weight))
-        k_weights = 1/(2 * (kinematic_scale * (posterior_variance + shift))**2)
-        k_weights[kin_weight_cutoff:] = 0
-        t_weights = loss_weights[2:, 0] if pose_only else loss_weights[1:, 0]
-        self.loss_fn_kin = Losses[kinematic_loss](t_weights, k_weights, dt, norm=kin_norm)
+        if kinematic_loss_type is None:
+            self.loss_fn_kin = None
+        else:
+            # weights: scale, spread
+            shift = 1/(kinematic_scale*np.sqrt(2*max_kin_weight))
+            k_weights = 1/(2 * (kinematic_scale * (posterior_variance + shift))**2)
+            k_weights[kin_weight_cutoff:] = 0
+            t_weights = loss_weights[2:, 0] if pose_only else loss_weights[1:, 0]
+            self.loss_fn_kin = Losses[kinematic_loss_type](t_weights, k_weights, dt, norm=kin_norm)
 
     def get_loss_weights(self, discount):
         '''
@@ -518,16 +522,20 @@ class GaussianInvDynDiffusion(nn.Module):
         else:
             loss, info = self.loss_fn(prediction, x_start)
 
-        if self.kinematic_loss:
+        if self.kinematic_loss_type is not None:
             x_recon = prediction
             if self.predict_epsilon:
                 x_recon = self.predict_start_from_noise(x_noisy, k, prediction)
             traj = traj_euc2se3(self.normalizer.unnormalize(x_recon, 'observations'), twist=not self.pose_only)
             kin_loss, kin_info = self.loss_fn_kin(traj, k)
-            loss = loss + kin_loss
-            if not self.data_loss:
-                loss = kin_loss
             info.update(kin_info)
+
+            # Select loss for training: either data, kinematic, or both
+            if self.train_kinematic_loss:
+                if self.train_data_loss:
+                    loss = loss + kin_loss
+                else:
+                    loss = kin_loss
 
         return loss, info
 
