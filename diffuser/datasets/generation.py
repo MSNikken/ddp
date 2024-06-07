@@ -89,13 +89,12 @@ class SplineDataset(object):
 
     def generate(self):
         path, _ = self.splines.generate_random(n_traj=self.nr_trajectories, n_step=self.nr_steps, n_interval=self.nr_intervals)
-        if self.repres == 'se3':
-            path = pp.Log(path)
+        observations = path.Log().tensor() if self.repres == 'se3' else path.tensor()
+
         if self.dt is not None:
             twist = approx_instant_twist(path, dt=self.dt)
-            observations = torch.cat([path.tensor(), twist.tensor()], dim=-1)
-        else:
-            observations = path.tensor()
+            observations = torch.cat([observations, twist.tensor()], dim=-1)
+
         rewards = torch.zeros((*path.shape[:-1], 1), device=path.device)
         terminals = torch.zeros((*path.shape[:-1], 1), device=path.device, dtype=torch.bool)
         terminals[:, -1] = 1
