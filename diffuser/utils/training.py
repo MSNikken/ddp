@@ -212,7 +212,7 @@ class Trainer(object):
 
         ## get trajectories and condition at t=0 from batch
         trajectories = to_np(batch.trajectories)
-        conditions = to_np(batch.conditions[0])[:,None]
+        conditions = to_np(batch.conditions[0])[:, None]
 
         ## [ batch_size x horizon x observation_dim ]
         normed_observations = trajectories[:, :, self.dataset.action_dim:]
@@ -270,10 +270,10 @@ class Trainer(object):
             # observations = conditions + deltas.cumsum(axis=1)
 
             ## [ n_samples x (horizon + 1) x observation_dim ]
-            normed_observations = np.concatenate([
-                np.repeat(normed_conditions, n_samples, axis=0),
-                normed_observations
-            ], axis=1)
+            # normed_observations = np.concatenate([
+            #     np.repeat(normed_conditions, n_samples, axis=0),
+            #     normed_observations
+            # ], axis=1)
 
             ## [ n_samples x (horizon + 1) x observation_dim ]
             observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
@@ -327,12 +327,11 @@ class Trainer(object):
             # observations = conditions + deltas.cumsum(axis=1)
 
             ## [ n_samples x (horizon + 1) x observation_dim ]
-            normed_observations = np.concatenate([
-                np.repeat(normed_conditions, n_samples, axis=0),
-                normed_observations
-            ], axis=1)
+            # normed_observations = np.concatenate([
+            #     np.repeat(normed_conditions, n_samples, axis=0),
+            #     normed_observations
+            # ], axis=1)
 
-            ## [ n_samples x (horizon + 1) x observation_dim ]
             observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
 
             #### @TODO: remove block-stacking specific stuff
@@ -389,13 +388,12 @@ class Trainer(object):
             # observations = conditions + deltas.cumsum(axis=1)
 
             # [ n_samples x (horizon + 2) x observation_dim ]
-            normed_observations = np.concatenate([
-                np.repeat(normed_conditions[0], n_samples, axis=0),
-                normed_observations,
-                np.repeat(normed_conditions[1], n_samples, axis=0)
-            ], axis=1)
+            # normed_observations = np.concatenate([
+            #     np.repeat(normed_conditions[0], n_samples, axis=0),
+            #     normed_observations,
+            #     np.repeat(normed_conditions[1], n_samples, axis=0)
+            # ], axis=1)
 
-            # [ n_samples x (horizon + 1) x observation_dim ]
             observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
 
             # @TODO: remove block-stacking specific stuff
