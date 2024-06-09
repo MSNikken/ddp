@@ -38,10 +38,10 @@ if __name__ == '__main__':
         #     'q': 10
         # },
         'kinematic_scale': {
-            'values': [500, 1000]
+            'values': [500, 10]
         },
         'max_kin_weight': {
-            'values': [1000, 100, 1]
+            'values': [100000, 10000]
         }
     })
     sweep_config['parameters'] = parameters_dict
