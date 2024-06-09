@@ -9,9 +9,8 @@ from .helpers import (
     cosine_beta_schedule,
     extract,
     apply_conditioning,
-    Losses,
+    Losses, traj_euc2se3,
 )
-from ..datasets.lie import traj_euc2se3
 
 
 class GaussianDiffusion(nn.Module):

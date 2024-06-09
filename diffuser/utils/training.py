@@ -13,6 +13,9 @@ from copy import deepcopy
 from .arrays import batch_to_device, to_np, to_device, apply_dict
 from .timer import Timer
 from .cloud import sync_logs
+from ..models.helpers import kinematic_pose_consistency, traj_euc2se3
+
+
 #from ml_logger import logger
 
 def cycle(dl):
@@ -152,8 +155,9 @@ class Trainer(object):
                         or self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion):
                     log_render = self.inv_render_samples()
                     log_inpaint = self.render_inpainting_samples()
+                    log_kinval = self.kinematic_validation()
                     if log_render is not None and log_inpaint is not None:
-                        wandb.log({**log_render, **log_inpaint})
+                        wandb.log({**log_render, **log_inpaint, **log_kinval})
                 elif self.model.__class__ == diffuser.models.diffusion.ActionGaussianDiffusion:
                     pass
                 else:
@@ -407,3 +411,43 @@ class Trainer(object):
                 log_entries.update(log_entry)
         if len(log_entries) > 0:
             return log_entries
+
+    def kinematic_validation(self, batch_size=10, n_samples=10):
+        paths = torch.empty((batch_size*n_samples, self.ema_model.horizon, 6), device=self.device)
+        for i in range(batch_size):
+            # get a two random points in normalized space
+            conditions_sample = torch.rand(2, 1, self.dataset.observation_dim, device=self.device)*2 - 1
+            conditions = {k: v for k, v in zip([0, self.ema_model.horizon-1], conditions_sample)}
+            conditions = to_device(conditions, self.device)
+            # repeat each item in conditions `n_samples` times
+            conditions = apply_dict(
+                einops.repeat,
+                conditions,
+                'b d -> (repeat b) d', repeat=n_samples,
+            )
+
+            # [ n_samples x horizon x (action_dim + observation_dim) ]
+            if self.ema_model.returns_condition:
+                returns = to_device(torch.ones(n_samples, 1), self.device)
+            else:
+                returns = None
+
+            if self.ema_model.model.calc_energy:
+                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns)
+            else:
+                samples = self.ema_model.conditional_sample(conditions, returns=returns)
+
+            if self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion:
+                path = self.dataset.normalizer.unnormalize(samples, 'observations')[..., :6]
+            else:
+                path = traj_euc2se3(self.dataset.normalizer.unnormalize(samples, 'observations'), twist=False)
+
+            paths[i*n_samples:i*n_samples+n_samples, ...] = path
+
+        score = torch.flatten(kinematic_pose_consistency(paths, norm=True))
+        table = wandb.Table(data=[[s] for s in score], columns=['kin score'])
+
+        #top = torch.topk(score, np.floor(batch_size*n_samples*0.05))
+        #return {"validation/kin_mean": torch.mean(score), "validation/top5_percent": top[-1]}
+        return {'validation/kin_score': wandb.plot.histogram(table, 'kin score',
+                                                             title='Generation kin. score distribution')}
