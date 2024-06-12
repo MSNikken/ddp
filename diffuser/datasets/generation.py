@@ -1,8 +1,26 @@
 import numpy as np
 import torch, pypose as pp
+from matplotlib import pyplot as plt
 
 from diffuser.utils.visualization import plot_trajectory
-from diffuser.models.helpers import dist_SE3, kinematic_consistency
+from diffuser.models.helpers import dist_SE3, kinematic_consistency, kinematic_pose_consistency
+
+
+def add_pose_noise(x, std, gamma=100):
+    x[..., :6] = (pp.se3(torch.randn((*x.shape[:2], 6), dtype=x.dtype)*(std*gamma)).Exp() @ pp.se3(x[..., :6]).Exp()).Log().tensor()
+    return x
+
+
+def add_t_noise(x, std):
+    x[..., 6:] = torch.randn((*x.shape[:2], 6), dtype=x.dtype)*std + x[..., 6:]
+    return x
+
+
+def add_noise(x, sigma_H, sigma_T=0):
+    x = add_pose_noise(x, sigma_H)
+    if x.shape[0] == 12:
+        x = add_t_noise(x, sigma_T)
+    return x
 
 
 def approx_instant_twist(H, dt=1.0):
@@ -26,6 +44,8 @@ class BSplineDefault:
     nr_intervals = 4  # nr interpolated segments in a trajectory
     nr_steps = 50  # interpolation steps per trajectory segment
     dt = 0.08  # s
+    sigma_H = None
+    sigma_T = None
 
 
 class BSplinePoseOnly:
@@ -36,16 +56,32 @@ class BSplinePoseOnly:
     nr_intervals = 4  # nr interpolated segments in a trajectory
     nr_steps = 50  # interpolation steps per trajectory segment
     dt = None  # s
+    sigma_H = None
+    sigma_T = None
+
+
+class BSplineNoisyPoseOnly:
+    method = 'bspline'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = 1e-5
+    sigma_T = None
 
 
 class BSplineTesting:
     method = 'bspline'
-    xmin = np.array([1, 1, 1])*0
-    xmax = np.array([1, 1, 1])*4
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
     nr_trajectories = 1000
-    nr_intervals = 2  # nr interpolated segments in a trajectory
-    nr_steps = 10  # interpolation steps per trajectory segment
-    dt = 0.08  # s
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = 0.1
+    sigma_T = None
 
 
 class SplineGenerator(object):
@@ -85,6 +121,8 @@ class SplineDataset(object):
         self.nr_intervals = config.nr_intervals   # nr interpolated segments in a trajectory
         self.nr_steps = config.nr_steps       # interpolation steps per trajectory segment
         self.dt = config.dt  # s
+        self.sigma_H = config.sigma_H
+        self.sigma_T = config.sigma_T
         self.data = self.generate()
 
     def generate(self):
@@ -94,6 +132,9 @@ class SplineDataset(object):
         if self.dt is not None:
             twist = approx_instant_twist(path, dt=self.dt)
             observations = torch.cat([observations, twist.tensor()], dim=-1)
+
+        if self.sigma_H is not None or self.sigma_T is not None:
+            observations = add_noise(observations, self.sigma_H, self.sigma_T)
 
         rewards = torch.zeros((*path.shape[:-1], 1), device=path.device)
         terminals = torch.zeros((*path.shape[:-1], 1), device=path.device, dtype=torch.bool)
@@ -112,27 +153,43 @@ class SplineDataset(object):
 
 
 if __name__ == "__main__":
-    gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
-    paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
-    delta_t = 0.1
-    twists = approx_instant_twist(paths, delta_t)
-    x = torch.cat([paths.Log(), twists], dim=-1)
-    res = kinematic_consistency(x, delta_t)
-    res_norm = kinematic_consistency(x, delta_t, norm=True)
-    dist_SE3(paths[..., :-1, :], paths[..., 1:, :])
-    torch.mean(dist_SE3(pp.Exp(twists[..., :-1, :]) @ paths[..., :-1, :], paths[..., 1:, :]))
-    fig, ax = plot_trajectory(paths, show=False)
-    ax.set_title('B spline')
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    fig.show()
+    config = BSplineTesting
+    bins = np.linspace(0, 20, 100)
+    sigmas = [100, 1, 0.5, 1e-3, 1e-4, 1e-5, 0]#, 1e-5, 0]
+    scores = []
+    plt.figure()
+    for sigma in sigmas:
+        config.sigma_H = sigma
+        dataset = SplineDataset(config)
+        scores.append(kinematic_pose_consistency(dataset.data['observations'], norm=True).numpy().flatten())
 
-    gen.interpolator = pp.chspline
-    paths = gen.generate_from_support(supp, interval)
-    twists = approx_instant_twist(paths)
-    fig, ax = plot_trajectory(paths, show=False)
-    ax.set_title('CH spline')
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    fig.show()
-    pass
+    lines = plt.hist(scores, bins=bins, stacked=False, histtype='step', density=True,
+                     label=[f'sigmaH: {sigma}, mean: {score.mean():.2f}' for sigma, score in zip(sigmas, scores)])
+    plt.legend()
+    plt.xlabel('Kinematic pose score, normalized')
+    plt.ylabel('Density')
+    plt.show()
+    # gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
+    # paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
+    # delta_t = 0.1
+    # twists = approx_instant_twist(paths, delta_t)
+    # x = torch.cat([paths.Log(), twists], dim=-1)
+    # res = kinematic_consistency(x, delta_t)
+    # res_norm = kinematic_consistency(x, delta_t, norm=True)
+    # dist_SE3(paths[..., :-1, :], paths[..., 1:, :])
+    # torch.mean(dist_SE3(pp.Exp(twists[..., :-1, :]) @ paths[..., :-1, :], paths[..., 1:, :]))
+    # fig, ax = plot_trajectory(paths, show=False)
+    # ax.set_title('B spline')
+    # ax.set_xlim(0, 1)
+    # ax.set_ylim(0, 1)
+    # fig.show()
+    #
+    # gen.interpolator = pp.chspline
+    # paths = gen.generate_from_support(supp, interval)
+    # twists = approx_instant_twist(paths)
+    # fig, ax = plot_trajectory(paths, show=False)
+    # ax.set_title('CH spline')
+    # ax.set_xlim(0, 1)
+    # ax.set_ylim(0, 1)
+    # fig.show()
+    # pass
