@@ -8,6 +8,7 @@ def normalize_quaternions(batch_SE3: pp.SE3_type):
     batch_SE3.tensor()[..., 3:] = batch_SE3.tensor()[..., 3:] / torch.linalg.norm(batch_SE3.tensor()[..., 3:], axis=-1, keepdims=True)
     return batch_SE3
 
+
 def _plot_position(ax, traj: pp.SE3_type, indices, marker=True):
     traj = traj.numpy()
     x = traj[indices, 0]
@@ -20,7 +21,7 @@ def _plot_position(ax, traj: pp.SE3_type, indices, marker=True):
 
 
 def _plot_orientation(ax, H: pp.SE3_type, indices, scale=0.05):
-    nr_frames = int(np.ceil((indices.stop - indices.start) / indices.step))
+    nr_frames = indices.size
     origin = torch.zeros((nr_frames, 3), dtype=H.dtype)
     x_vec, y_vec, z_vec = (torch.zeros((nr_frames, 3), dtype=H.dtype),
                            torch.zeros((nr_frames, 3), dtype=H.dtype),
@@ -41,7 +42,7 @@ def _plot_orientation(ax, H: pp.SE3_type, indices, scale=0.05):
         ax.plot([origin[i, 0], z_vec[i, 0]], [origin[i, 1], z_vec[i, 1]], [origin[i, 2], z_vec[i, 2]], c='b')
 
 
-def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True):
+def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True, plot_end=False):
     traj = torch.tensor(traj) if isinstance(traj, np.ndarray) else traj.cpu()
     if traj.ndim == 2:
         traj = traj[None, ...]
@@ -60,6 +61,9 @@ def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True)
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
     indices = slice(0, traj.shape[1], step)
+    indices = np.arange(0, traj.shape[1], step)
+    if plot_end and not np.mod(traj.shape[1], step) == 1:
+        indices = np.append(indices, traj.shape[1]-1)
     for tau in traj:
         _plot_position(ax, tau, indices, marker)
         if rot:
