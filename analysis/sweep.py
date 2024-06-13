@@ -41,7 +41,7 @@ if __name__ == '__main__':
             'values': [0.1, 1, 10]
         },
         'max_kin_weight': {
-            'values': [1e6, 1e7]
+            'values': [100, 10000]
         }
     })
     sweep_config['parameters'] = parameters_dict
@@ -51,6 +51,6 @@ if __name__ == '__main__':
     def train(config=None):
         with wandb.init(project="diffusion", config=config, mode=mode):
             wandb.define_metric("loss", summary="min")
-            main()
+            main(**vars(wandb.config)['_items'])
 
     wandb.agent(sweep_id, train, count=8)

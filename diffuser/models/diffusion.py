@@ -535,7 +535,6 @@ class GaussianInvDynDiffusion(nn.Module):
                     loss = loss + kin_loss
                 else:
                     loss = kin_loss
-
         return loss, info
 
     def loss(self, x, cond, returns=None):
