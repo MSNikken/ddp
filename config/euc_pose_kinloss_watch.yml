@@ -18,7 +18,7 @@ sample_freq: 10000
 loss_type: 'state_l2'
 train_kinematic_loss: False
 kinematic_loss_type: 'kinematic_pose_l2'
-kinematic_scale: 5000
+kinematic_scale: 100
 max_kin_weight: 1
 kin_weight_cutoff: 50
 kin_norm: True
