@@ -313,7 +313,8 @@ class KinematicLInf(WeightedKinematicLoss):
 
     def _loss(self, traj):
         score = kinematic_consistency(traj, self.dt, norm=self.norm)
-        max, max_i = torch.max(score)
+        mask = score == score.max()
+        score = score * mask
         return F.mse_loss(torch.where(score == max, score, 0), torch.zeros_like(score), reduction='none')
 
 
@@ -324,8 +325,9 @@ class KinematicPoseLInf(WeightedKinematicLoss):
 
     def _loss(self, traj):
         score = kinematic_pose_consistency(traj, norm=self.norm)
-        max, max_i = torch.max(score)
-        return F.mse_loss(torch.where(score == max, score, 0), torch.zeros_like(score), reduction='none')
+        mask = score == score.max()
+        score = score * mask
+        return F.mse_loss(score, torch.zeros_like(score), reduction='none')
 
 
 
