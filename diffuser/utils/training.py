@@ -445,9 +445,17 @@ class Trainer(object):
             paths[i*n_samples:i*n_samples+n_samples, ...] = path
 
         score = torch.flatten(kinematic_pose_consistency(paths, norm=True))
+        k_top = 0.05
+        top_k, _ = torch.topk(score, int(score.numel()*k_top))
+
         table = wandb.Table(data=[[s] for s in score], columns=['kin score'])
+        table_topk = wandb.Table(data=[[s] for s in score], columns=['kin score'])
 
         #top = torch.topk(score, np.floor(batch_size*n_samples*0.05))
         #return {"validation/kin_mean": torch.mean(score), "validation/top5_percent": top[-1]}
         return {'validation/kin_score': wandb.plot.histogram(table, 'kin score',
-                                                             title='Generation kin. score distribution')}
+                                                             title='Generation kin. score distribution'),
+                f'validation/kin_score_top_{k_top}':
+                    wandb.plot.histogram(table_topk, 'kin score',
+                                         title=f'Top {k_top*100}% generation kin. score distribution')
+                }

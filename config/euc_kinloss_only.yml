@@ -21,8 +21,8 @@ train_data_loss: False
 train_kinematic_loss: True
 kinematic_loss_type: 'kinematic_pose_l2'
 kin_norm: True
-kinematic_scale: 1000
-max_kin_weight: 20000
+kinematic_scale: 100
+max_kin_weight: 1
 kin_weight_cutoff: 199
 n_train_steps: 60000
 
