@@ -153,36 +153,36 @@ class SplineDataset(object):
 
 
 if __name__ == "__main__":
-    config = BSplineTesting
-    bins = np.linspace(0, 20, 100)
-    sigmas = [100, 1, 0.5, 1e-3, 1e-4, 1e-5, 0]#, 1e-5, 0]
-    scores = []
-    plt.figure()
-    for sigma in sigmas:
-        config.sigma_H = sigma
-        dataset = SplineDataset(config)
-        scores.append(kinematic_pose_consistency(dataset.data['observations'], norm=True).numpy().flatten())
-
-    lines = plt.hist(scores, bins=bins, stacked=False, histtype='step', density=True,
-                     label=[f'sigmaH: {sigma}, mean: {score.mean():.2f}' for sigma, score in zip(sigmas, scores)])
-    plt.legend()
-    plt.xlabel('Kinematic pose score, normalized')
-    plt.ylabel('Density')
-    plt.show()
-    # gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
-    # paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
-    # delta_t = 0.1
-    # twists = approx_instant_twist(paths, delta_t)
-    # x = torch.cat([paths.Log(), twists], dim=-1)
-    # res = kinematic_consistency(x, delta_t)
-    # res_norm = kinematic_consistency(x, delta_t, norm=True)
-    # dist_SE3(paths[..., :-1, :], paths[..., 1:, :])
-    # torch.mean(dist_SE3(pp.Exp(twists[..., :-1, :]) @ paths[..., :-1, :], paths[..., 1:, :]))
-    # fig, ax = plot_trajectory(paths, show=False)
-    # ax.set_title('B spline')
-    # ax.set_xlim(0, 1)
-    # ax.set_ylim(0, 1)
-    # fig.show()
+    # config = BSplineTesting
+    # bins = np.linspace(0, 20, 100)
+    # sigmas = [100, 1, 0.5, 1e-3, 1e-4, 1e-5, 0]#, 1e-5, 0]
+    # scores = []
+    # plt.figure()
+    # for sigma in sigmas:
+    #     config.sigma_H = sigma
+    #     dataset = SplineDataset(config)
+    #     scores.append(kinematic_pose_consistency(dataset.data['observations'], norm=True).numpy().flatten())
+    #
+    # lines = plt.hist(scores, bins=bins, stacked=False, histtype='step', density=True,
+    #                  label=[f'sigmaH: {sigma}, mean: {score.mean():.2f}' for sigma, score in zip(sigmas, scores)])
+    # plt.legend()
+    # plt.xlabel('Kinematic pose score, normalized')
+    # plt.ylabel('Density')
+    # plt.show()
+    gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
+    paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
+    delta_t = 0.1
+    twists = approx_instant_twist(paths, delta_t)
+    x = torch.cat([paths.Log(), twists], dim=-1)
+    res = kinematic_consistency(x, delta_t)
+    res_norm = kinematic_consistency(x, delta_t, norm=True)
+    dist_SE3(paths[..., :-1, :], paths[..., 1:, :])
+    torch.mean(dist_SE3(pp.Exp(twists[..., :-1, :]) @ paths[..., :-1, :], paths[..., 1:, :]))
+    fig, ax = plot_trajectory(paths, show=False, plot_end=True, detail_ends=4, step=2)
+    ax.set_title('B spline')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    fig.show()
     #
     # gen.interpolator = pp.chspline
     # paths = gen.generate_from_support(supp, interval)
@@ -192,4 +192,4 @@ if __name__ == "__main__":
     # ax.set_xlim(0, 1)
     # ax.set_ylim(0, 1)
     # fig.show()
-    # pass
+    pass

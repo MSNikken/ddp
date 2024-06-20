@@ -58,7 +58,7 @@ class PathRenderer(object):
     def __init__(self, env=None, repres='se3', **kwargs):
         assert repres == 'se3' or repres == 'cart'
 
-        self.render = functools.partial(plot_trajectory, step=5, block=False, plot_end=True, **kwargs)
+        self.render = functools.partial(plot_trajectory, step=5, block=False, plot_end=True, detail_ends=5, **kwargs)
         self.cart = repres == 'cart'
         self.traj_dim = 7 if self.cart else 6
 
