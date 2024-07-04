@@ -144,6 +144,8 @@ class GaussianNormalizer(Normalizer):
         )
 
     def normalize(self, x):
+        if type(x) is torch.Tensor:
+            return (x - torch.tensor(self.means, device=x.device)) / torch.tensor(self.stds, device=x.device)
         return (x - self.means) / self.stds
 
     def unnormalize(self, x):
