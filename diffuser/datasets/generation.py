@@ -2,8 +2,8 @@ import numpy as np
 import torch, pypose as pp
 from matplotlib import pyplot as plt
 
-from diffuser.utils.visualization import plot_trajectory
-from diffuser.models.helpers import dist_SE3, kinematic_consistency, kinematic_pose_consistency
+from ..utils.visualization import plot_trajectory
+from ..models.helpers import dist_SE3, kinematic_consistency, kinematic_pose_consistency
 
 
 def add_pose_noise(x, std, gamma=100):
