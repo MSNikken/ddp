@@ -451,7 +451,7 @@ class Trainer(object):
         top_k, _ = torch.topk(score, int(score.numel()*k_top))
 
         table = wandb.Table(data=[[s] for s in score], columns=['kin score'])
-        table_topk = wandb.Table(data=[[s] for s in score], columns=['kin score'])
+        table_topk = wandb.Table(data=[[s] for s in top_k], columns=['kin score'])
 
         #top = torch.topk(score, np.floor(batch_size*n_samples*0.05))
         #return {"validation/kin_mean": torch.mean(score), "validation/top5_percent": top[-1]}
