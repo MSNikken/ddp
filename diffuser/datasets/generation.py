@@ -1,9 +1,18 @@
+import typing
+from collections import namedtuple
+
 import numpy as np
 import torch, pypose as pp
 from matplotlib import pyplot as plt
 
-from ..utils.visualization import plot_trajectory
-from ..models.helpers import dist_SE3, kinematic_consistency, kinematic_pose_consistency
+try:
+    from ..utils.visualization import plot_trajectory
+    from ..models.helpers import dist_SE3, kinematic_consistency, kinematic_pose_consistency
+except ImportError:
+    from diffuser.utils.visualization import plot_trajectory
+    from diffuser.models.helpers import dist_SE3, kinematic_consistency, kinematic_pose_consistency
+
+Zone = namedtuple('Zone', ['xmin', 'ymin', 'zmin', 'xmax', 'ymax', 'zmax'])
 
 
 def add_pose_noise(x, std, gamma=100):
@@ -36,6 +45,20 @@ def approx_instant_twist(H, dt=1.0):
     return T
 
 
+def reward_by_zone(H, zones: typing.List[Zone]):
+    rewards = torch.zeros(H.shape[:-1], device=H.device, dtype=H.dtype)
+    for zone in zones:
+        mask = ((H[..., 0] > zone.xmin) & (H[..., 0] < zone.xmax) &
+                (H[..., 1] > zone.ymin) & (H[..., 1] < zone.ymax) &
+                (H[..., 2] > zone.zmin) & (H[..., 2] < zone.zmax))
+        rewards[mask] = -1
+    return rewards
+
+
+def reward_distance_to_end(H, xmin, xmax):
+    return -(torch.linalg.vector_norm((H[..., :3] - H[..., -1, :3][..., None, :]), dim=-1)/np.linalg.norm(xmax-xmin))**2
+
+
 class BSplineDefault:
     method = 'bspline'
     xmin = np.array([0, 0, 0])
@@ -46,6 +69,9 @@ class BSplineDefault:
     dt = 0.08  # s
     sigma_H = None
     sigma_T = None
+    zones = []
+    dist_reward = False
+    reward_weights = None
 
 
 class BSplinePoseOnly:
@@ -58,6 +84,9 @@ class BSplinePoseOnly:
     dt = None  # s
     sigma_H = None
     sigma_T = None
+    zones = []
+    dist_reward = False
+    reward_weights = None
 
 
 class BSplineNoisyPoseOnly:
@@ -70,6 +99,54 @@ class BSplineNoisyPoseOnly:
     dt = None  # s
     sigma_H = 1e-5
     sigma_T = None
+    zones = []
+    dist_reward = False
+    reward_weights = None
+
+
+class BSplinePoseObstacle:
+    method = 'bspline'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.45, ymin=0.45, zmin=0, xmax=0.55, ymax=0.55, zmax=1)]
+    dist_reward = False
+    reward_weights = np.array([5])
+
+
+class BSplinePoseDist:
+    method = 'bspline'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = []
+    dist_reward = True
+    reward_weights = None
+
+
+class BSplinePoseMixReward:
+    method = 'bspline'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.45, ymin=0.45, zmin=0, xmax=0.55, ymax=0.55, zmax=1)]
+    dist_reward = True
+    reward_weights = np.array([5, 1])
 
 
 class BSplineTesting:
@@ -82,6 +159,9 @@ class BSplineTesting:
     dt = None  # s
     sigma_H = 0.1
     sigma_T = None
+    zones = [Zone(xmin=0, ymin=0, zmin=0, xmax=0.5, ymax=0.5, zmax=0.5)]
+    dist_reward = True
+    reward_weights = np.array([100, 1])
 
 
 class SplineGenerator(object):
@@ -115,6 +195,7 @@ class SplineGenerator(object):
 class SplineDataset(object):
     def __init__(self, config, repres='se3'):
         assert repres in {'cart', 'se3'}
+        self.config = config
         self.repres = repres
         self.splines = SplineGenerator(config.xmin, config.xmax, config.method)
         self.nr_trajectories = config.nr_trajectories
@@ -123,6 +204,9 @@ class SplineDataset(object):
         self.dt = config.dt  # s
         self.sigma_H = config.sigma_H
         self.sigma_T = config.sigma_T
+        self.obstacles = config.zones
+        self.dist_reward = config.dist_reward
+        self.reward_weights = config.reward_weights
         self.data = self.generate()
 
     def generate(self):
@@ -136,13 +220,32 @@ class SplineDataset(object):
         if self.sigma_H is not None or self.sigma_T is not None:
             observations = add_noise(observations, self.sigma_H, self.sigma_T)
 
-        rewards = torch.zeros((*path.shape[:-1], 1), device=path.device)
+        rewards = self.generate_rewards(path.tensor(), repres='cart')
+
         terminals = torch.zeros((*path.shape[:-1], 1), device=path.device, dtype=torch.bool)
         terminals[:, -1] = 1
         timeouts = torch.zeros((*path.shape[:-1], 1), device=path.device, dtype=torch.bool)
         actions = torch.zeros((*path.shape[:-1], 1), device=path.device)
         return {'observations': observations, 'actions': actions, 'rewards': rewards,
                 'terminals': terminals, 'timeouts': timeouts}
+
+    def generate_rewards(self, paths: torch.Tensor, repres='se3'):
+        if repres == 'se3':
+            paths = pp.se3(paths).Exp().tensor()
+
+        rewards = []
+        if len(self.obstacles) > 0:
+            rewards.append(reward_by_zone(paths, self.obstacles))
+        if self.dist_reward:
+            rewards.append(reward_distance_to_end(paths, self.config.xmin, self.config.xmax))
+
+        if len(rewards) == 0:
+            rewards = torch.zeros((*paths.shape[:-1], 1), device=paths.device)
+        else:
+            rewards = torch.stack(rewards, dim=-1)
+        if self.reward_weights is not None:
+            rewards = torch.sum(rewards * self.reward_weights, dim=-1)
+        return rewards
 
     def __call__(self, *args, **kwargs):
         for i in range(self.data['observations'].shape[0]):
@@ -169,20 +272,25 @@ if __name__ == "__main__":
     # plt.xlabel('Kinematic pose score, normalized')
     # plt.ylabel('Density')
     # plt.show()
-    gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
-    paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
-    delta_t = 0.1
-    twists = approx_instant_twist(paths, delta_t)
-    x = torch.cat([paths.Log(), twists], dim=-1)
-    res = kinematic_consistency(x, delta_t)
-    res_norm = kinematic_consistency(x, delta_t, norm=True)
-    dist_SE3(paths[..., :-1, :], paths[..., 1:, :])
-    torch.mean(dist_SE3(pp.Exp(twists[..., :-1, :]) @ paths[..., :-1, :], paths[..., 1:, :]))
-    fig, ax = plot_trajectory(paths, show=False, plot_end=True, detail_ends=4, step=2)
-    ax.set_title('B spline')
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    fig.show()
+
+    # gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
+    # paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
+    # delta_t = 0.1
+    # twists = approx_instant_twist(paths, delta_t)
+    # x = torch.cat([paths.Log(), twists], dim=-1)
+    # res = kinematic_consistency(x, delta_t)
+    # res_norm = kinematic_consistency(x, delta_t, norm=True)
+    # dist_SE3(paths[..., :-1, :], paths[..., 1:, :])
+    # torch.mean(dist_SE3(pp.Exp(twists[..., :-1, :]) @ paths[..., :-1, :], paths[..., 1:, :]))
+    # fig, ax = plot_trajectory(paths, show=False, plot_end=True, detail_ends=4, step=2)
+    # ax.set_title('B spline')
+    # ax.set_xlim(0, 1)
+    # ax.set_ylim(0, 1)
+    # fig.show()
+
+    config = BSplinePoseMixReward
+    dataset = SplineDataset(config)
+
     #
     # gen.interpolator = pp.chspline
     # paths = gen.generate_from_support(supp, interval)

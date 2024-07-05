@@ -257,19 +257,21 @@ class GeneratedDataset(object):
     def __init__(self, env='BSplineDefault', horizon=64, normalizer='LimitsNormalizer', preprocess_fns=[],
                  max_path_length=1000,
                  max_n_episodes=10000, termination_penalty=0, use_padding=True, discount=0.99, returns_scale=1000,
-                 include_returns=False, repres='se3'):
+                 include_returns=False, regen_reward=True, repres='se3'):
         assert repres in {'cart', 'se3'}
         self.repres = repres
         self.preprocess_fn = get_preprocess_fn(preprocess_fns, None)
         self.returns_scale = returns_scale
         self.horizon = horizon
         self.max_path_length = max_path_length
+        self.regen_reward = regen_reward
         self.discount = discount
         self.discounts = self.discount ** np.arange(self.max_path_length)[:, None]
         self.use_padding = use_padding
         self.include_returns = include_returns
-        self.dataset = import_class(env)
-        itr = SplineDataset(self.dataset, self.repres)()
+        self.dataset_config = import_class(env)
+        self.dataset = SplineDataset(self.dataset_config, self.repres)
+        itr = self.dataset()
 
         fields = ReplayBuffer(max_n_episodes, max_path_length, termination_penalty)
         for i, episode in enumerate(itr):
@@ -335,7 +337,8 @@ class GeneratedDataset(object):
         trajectories = np.concatenate([actions, observations], axis=-1)
 
         if self.include_returns:
-            rewards = self.fields.rewards[path_ind, start:]
+            rewards = self.dataset.generate_rewards(torch.tensor(observations), repres=self.repres).numpy() if (
+                self.regen_reward) else self.fields.rewards[path_ind, start:]
             discounts = self.discounts[:len(rewards)]
             returns = (discounts * rewards).sum()
             returns = np.array([returns / self.returns_scale], dtype=np.float32)
