@@ -25,6 +25,7 @@ kinematic_scale: 100
 max_kin_weight: 1
 kin_weight_cutoff: 199
 n_train_steps: 60000
+inference_returns: 0
 
 
 # Representation/visualization

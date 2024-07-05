@@ -21,6 +21,7 @@ kinematic_scale: 100
 max_kin_weight: 0.3
 kin_weight_cutoff: 50
 kin_norm: True
+inference_returns: 0
 
 # Representation/visualization
 renderer: 'utils.PathRenderer'

@@ -16,6 +16,7 @@ returns_condition: False
 sample_freq: 10000
 loss_type: 'state_l2'
 kinematic_loss: False
+inference_returns: 0
 
 # Representation/visualization
 renderer: 'utils.PathRenderer'
