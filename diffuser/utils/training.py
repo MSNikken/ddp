@@ -60,6 +60,7 @@ class Trainer(object):
         label_freq=100000,
         save_parallel=False,
         n_reference=8,
+        inference_returns=1,
         bucket=None,
         train_device='cuda',
         save_checkpoints=False,
@@ -94,6 +95,7 @@ class Trainer(object):
 
         self.bucket = bucket
         self.n_reference = n_reference
+        self.inference_returns = inference_returns
 
         self.reset_parameters()
         self.step = 0
@@ -252,7 +254,7 @@ class Trainer(object):
 
             ## [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1), self.device)
+                returns = to_device(torch.ones(n_samples, 1)*self.inference_returns, self.device)
             else:
                 returns = None
 
@@ -309,7 +311,7 @@ class Trainer(object):
 
             ## [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1), self.device)
+                returns = to_device(torch.ones(n_samples, 1)*self.inference_returns, self.device)
             else:
                 returns = None
 
@@ -370,7 +372,7 @@ class Trainer(object):
 
             # [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1), self.device)
+                returns = to_device(torch.ones(n_samples, 1)*self.inference_returns, self.device)
             else:
                 returns = None
 
@@ -428,7 +430,7 @@ class Trainer(object):
 
             # [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1), self.device)
+                returns = to_device(torch.ones(n_samples, 1)*self.inference_returns, self.device)
             else:
                 returns = None
 

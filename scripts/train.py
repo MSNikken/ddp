@@ -171,6 +171,7 @@ def main(**deps):
         save_parallel=Config.save_parallel,
         bucket=Config.bucket,
         n_reference=Config.n_reference,
+        inference_returns=Config.inference_returns,
         train_device=torch.device(Config.device),
         save_checkpoints=Config.save_checkpoints,
     )

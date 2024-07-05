@@ -64,6 +64,7 @@ class Config(ParamsProto):
     n_saves = 5
     save_parallel = False
     n_reference = 8
+    inference_returns = 1
     save_checkpoints = False
     train_kinematic_loss = False
     kinematic_loss_type = None
