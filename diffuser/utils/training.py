@@ -157,9 +157,10 @@ class Trainer(object):
                         or self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion):
                     log_render = self.inv_render_samples()
                     log_inpaint = self.render_inpainting_samples()
+                    log_scen = self.render_scenario_samples()
                     log_kinval = self.kinematic_validation()
                     if log_render is not None and log_inpaint is not None:
-                        wandb.log({**log_render, **log_inpaint, **log_kinval})
+                        wandb.log({**log_render, **log_inpaint, **log_scen, **log_kinval})
                 elif self.model.__class__ == diffuser.models.diffusion.ActionGaussianDiffusion:
                     pass
                 else:
@@ -389,25 +390,60 @@ class Trainer(object):
             # [ 1 x 1 x observation_dim ]
             normed_conditions = to_np(conditions_sample)[:, None]
 
-            # from diffusion.datasets.preprocessing import blocks_cumsum_quat
-            # observations = conditions + blocks_cumsum_quat(deltas)
-            # observations = conditions + deltas.cumsum(axis=1)
-
-            # [ n_samples x (horizon + 2) x observation_dim ]
-            # normed_observations = np.concatenate([
-            #     np.repeat(normed_conditions[0], n_samples, axis=0),
-            #     normed_observations,
-            #     np.repeat(normed_conditions[1], n_samples, axis=0)
-            # ], axis=1)
 
             observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
 
-            # @TODO: remove block-stacking specific stuff
-            # from diffusion.datasets.preprocessing import blocks_euler_to_quat, blocks_add_kuka
-            # observations = blocks_add_kuka(observations)
-            ####
-
             savepath = os.path.join('images', f'inpainting_sample-{i}.png')
+            log_entry = self.renderer.composite(savepath, observations)
+            if log_entry is not None:
+                log_entries.update(log_entry)
+        if len(log_entries) > 0:
+            return log_entries
+
+    def render_scenario_samples(self, batch_size=2, n_samples=2):
+        log_entries = {}
+        # TODO: Configure scenario from config file
+        scn_conditions = [torch.rand(2, 1, self.dataset.observation_dim, device=self.device) * 2 - 1,
+                          torch.rand(2, 1, self.dataset.observation_dim, device=self.device) * 2 - 1]
+        scn_conditions = [self.dataset.normalizer.unnormalize(cond, 'observations') for cond in scn_conditions]
+        scn_conditions[0][0, :, :3] = torch.tensor([0.5, 0.35, 0.5])
+        scn_conditions[0][1, :, :3] = torch.tensor([0.5, 0.65, 0.5])
+        scn_conditions[1][0, :, :3] = torch.tensor([0.3, 0.5, 0.1])
+        scn_conditions[1][1, :, :3] = torch.tensor([0.7, 0.5, 0.9])
+        scn_conditions = [self.dataset.normalizer.normalize(cond, 'observations') for cond in scn_conditions]
+
+        for i in range(batch_size):
+
+            # get a two random points in normalized space
+            conditions_sample = scn_conditions[i]
+            conditions = {k: v for k, v in zip([0, self.ema_model.horizon - 1], conditions_sample)}
+            conditions = to_device(conditions, self.device)
+            # repeat each item in conditions `n_samples` times
+            conditions = apply_dict(
+                einops.repeat,
+                conditions,
+                'b d -> (repeat b) d', repeat=n_samples,
+            )
+
+            # [ n_samples x horizon x (action_dim + observation_dim) ]
+            if self.ema_model.returns_condition:
+                returns = to_device(torch.ones(n_samples, 1) * self.inference_returns, self.device)
+            else:
+                returns = None
+
+            if self.ema_model.model.calc_energy:
+                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns)
+            else:
+                samples = self.ema_model.conditional_sample(conditions, returns=returns)
+
+            samples = to_np(samples)
+
+            # [ n_samples x horizon x observation_dim ]
+            normed_observations = samples[:, :, :]
+
+            observations = self.dataset.normalizer.unnormalize(normed_observations, 'observations')
+
+            savepath = os.path.join('images', f'scn_sample-{i}.png')
             log_entry = self.renderer.composite(savepath, observations)
             if log_entry is not None:
                 log_entries.update(log_entry)
