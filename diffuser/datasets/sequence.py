@@ -337,8 +337,11 @@ class GeneratedDataset(object):
         trajectories = np.concatenate([actions, observations], axis=-1)
 
         if self.include_returns:
-            rewards = self.dataset.generate_rewards(torch.tensor(observations), repres=self.repres).numpy() if (
-                self.regen_reward) else self.fields.rewards[path_ind, start:]
+            if self.regen_reward:
+                rewards = self.dataset.generate_rewards(self.normalizer.unnormalize(
+                          torch.tensor(observations), 'observations'), repres=self.repres).numpy()
+            else:
+                rewards = self.fields.rewards[path_ind, start:]
             discounts = self.discounts[:len(rewards)]
             returns = (discounts * rewards).sum()
             returns = np.array([returns / self.returns_scale], dtype=np.float32)
