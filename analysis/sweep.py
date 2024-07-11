@@ -37,15 +37,18 @@ if __name__ == '__main__':
         #     'min': 1,
         #     'q': 10
         # },
-        'kinematic_scale': {
-            'values': [10, 100, 1000]
-        },
-        'max_kin_weight': {
-            'values': [1, 10]
+        # 'kinematic_scale': {
+        #     'values': [10, 100, 1000]
+        # },
+        # 'max_kin_weight': {
+        #     'values': [1, 10]
+        # }
+        'inference_returns': {
+            'values': [0, -0.01, -0.1]
         }
     })
     sweep_config['parameters'] = parameters_dict
-    sweep_config['name'] = 'kinloss_pose_sweep'
+    sweep_config['name'] = 'conditional_sampling'
     sweep_id = wandb.sweep(sweep_config, project="diffusion")
 
     def train(config=None):
