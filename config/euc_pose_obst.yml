@@ -4,7 +4,7 @@
 
 loader: 'datasets.GeneratedDataset'
 dataset: 'datasets.BSplinePoseObstacle'
-returns_scale: 400.0
+returns_scale: 250.0
 dt: 0.08
 normalizer: 'GaussianNormalizer'
 pose_only: True
