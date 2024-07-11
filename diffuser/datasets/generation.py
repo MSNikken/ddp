@@ -61,6 +61,7 @@ def reward_distance_to_end(H, xmin, xmax):
 
 class BSplineDefault:
     method = 'bspline'
+    mode = 'random'
     xmin = np.array([0, 0, 0])
     xmax = np.array([1, 1, 1])
     nr_trajectories = 10000
@@ -76,6 +77,7 @@ class BSplineDefault:
 
 class BSplinePoseOnly:
     method = 'bspline'
+    mode = 'random'
     xmin = np.array([0, 0, 0])
     xmax = np.array([1, 1, 1])
     nr_trajectories = 10000
@@ -91,6 +93,7 @@ class BSplinePoseOnly:
 
 class BSplineNoisyPoseOnly:
     method = 'bspline'
+    mode = 'random'
     xmin = np.array([0, 0, 0])
     xmax = np.array([1, 1, 1])
     nr_trajectories = 10000
@@ -106,6 +109,7 @@ class BSplineNoisyPoseOnly:
 
 class BSplinePoseObstacle:
     method = 'bspline'
+    mode = 'random'
     xmin = np.array([0, 0, 0])
     xmax = np.array([1, 1, 1])
     nr_trajectories = 10000
@@ -121,6 +125,7 @@ class BSplinePoseObstacle:
 
 class BSplinePoseDist:
     method = 'bspline'
+    mode = 'random'
     xmin = np.array([0, 0, 0])
     xmax = np.array([1, 1, 1])
     nr_trajectories = 10000
@@ -136,6 +141,7 @@ class BSplinePoseDist:
 
 class BSplinePoseMixReward:
     method = 'bspline'
+    mode = 'random'
     xmin = np.array([0, 0, 0])
     xmax = np.array([1, 1, 1])
     nr_trajectories = 10000
@@ -149,8 +155,25 @@ class BSplinePoseMixReward:
     reward_weights = np.array([5, 1])
 
 
+class LinesPoseMixRew:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
+    dist_reward = True
+    reward_weights = np.array([5, 1])
+
+
 class BSplineTesting:
     method = 'bspline'
+    mode = 'lines'
     xmin = np.array([0, 0, 0])
     xmax = np.array([1, 1, 1])
     nr_trajectories = 1000
@@ -191,6 +214,26 @@ class SplineGenerator(object):
         support = pp.SE3(torch.cat((support_x, support_r.tensor()), dim=2))
         return self.generate_from_support(support, interval=interval), (support, interval)
 
+    @torch.no_grad()
+    def generate_lines(self, n_traj=1, n_step=10, n_interval=1):
+        # Rotation interpolated with chspline, since bspline is not supported for SO(3)
+        n_support = n_interval + 1
+        n_points = n_step*n_interval + 1
+        end_points = torch.rand((n_traj, 2, 3)) * (self.xmax - self.xmin) + self.xmin
+        diff = end_points[:, 1:2] - end_points[:, 0:1]
+
+        # Assume progression along the line is cubic in time: y=-2t^3+3n^2
+        t = np.linspace(0, 1, n_points)
+        progression = -2*t**3+3*t**2
+        x = end_points[:, 0:1] + diff.repeat((1, n_points, 1)) * progression[:, None]
+
+        # Rotation interpolated with chspline, since bspline is not supported for SO(3)
+        support_r = torch.randn((n_traj, n_support, 3))
+        support_r = pp.so3(2 * torch.pi * torch.rand((n_traj, n_support, 1)) *
+                           support_r / torch.norm(support_r, dim=2, keepdim=True)).Exp()
+        r = pp.SO3(pp.chspline(support_r, 1/n_step))
+        return pp.SE3(torch.cat([x, r.tensor()], dim=-1)), (support_r, 1/n_step)
+
 
 class SplineDataset(object):
     def __init__(self, config, repres='se3'):
@@ -198,6 +241,7 @@ class SplineDataset(object):
         self.config = config
         self.repres = repres
         self.splines = SplineGenerator(config.xmin, config.xmax, config.method)
+        self.mode = config.mode
         self.nr_trajectories = config.nr_trajectories
         self.nr_intervals = config.nr_intervals   # nr interpolated segments in a trajectory
         self.nr_steps = config.nr_steps       # interpolation steps per trajectory segment
@@ -210,7 +254,13 @@ class SplineDataset(object):
         self.data = self.generate()
 
     def generate(self):
-        path, _ = self.splines.generate_random(n_traj=self.nr_trajectories, n_step=self.nr_steps, n_interval=self.nr_intervals)
+        if self.mode == 'random':
+            path, _ = self.splines.generate_random(n_traj=self.nr_trajectories,
+                                                   n_step=self.nr_steps, n_interval=self.nr_intervals)
+        elif self.mode == 'lines':
+            path, _ = self.splines.generate_lines(n_traj=self.nr_trajectories,
+                                                  n_step=self.nr_steps, n_interval=self.nr_intervals)
+
         observations = path.Log().tensor() if self.repres == 'se3' else path.tensor()
 
         if self.dt is not None:
@@ -288,16 +338,16 @@ if __name__ == "__main__":
     # ax.set_ylim(0, 1)
     # fig.show()
 
-    config = BSplinePoseMixReward
-    dataset = SplineDataset(config)
+    # config = BSplinePoseMixReward
+    # dataset = SplineDataset(config)
 
     #
-    # gen.interpolator = pp.chspline
-    # paths = gen.generate_from_support(supp, interval)
-    # twists = approx_instant_twist(paths)
-    # fig, ax = plot_trajectory(paths, show=False)
-    # ax.set_title('CH spline')
-    # ax.set_xlim(0, 1)
-    # ax.set_ylim(0, 1)
-    # fig.show()
-    pass
+    config = LinesPoseMixRew
+    SplineDataset(config)
+    gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
+    paths, (supp, interval) = gen.generate_lines(n_traj=5, n_step=10, n_interval=3)
+    fig, ax = plot_trajectory(paths, show=False)
+    ax.set_title('Paths')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    fig.show()
