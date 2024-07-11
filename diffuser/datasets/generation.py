@@ -294,7 +294,7 @@ class SplineDataset(object):
         else:
             rewards = torch.stack(rewards, dim=-1)
         if self.reward_weights is not None:
-            rewards = torch.sum(rewards * self.reward_weights, dim=-1)
+            rewards = torch.sum(rewards * self.reward_weights, dim=-1, keepdim=True)
         return rewards
 
     def __call__(self, *args, **kwargs):
