@@ -45,7 +45,8 @@ def _plot_orientation(ax, H: pp.SE3_type, indices, scale=0.05):
         ax.plot([origin[i, 0], z_vec[i, 0]], [origin[i, 1], z_vec[i, 1]], [origin[i, 2], z_vec[i, 2]], c='b')
 
 
-def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True, plot_end=False, detail_ends=1):
+def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True, plot_end=False, detail_ends=1,
+                    as_equal=False):
     traj = torch.tensor(traj) if isinstance(traj, np.ndarray) else traj.cpu()
     if traj.ndim == 2:
         traj = traj[None, ...]
@@ -82,7 +83,14 @@ def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True,
         if rot:
             _plot_orientation(ax, tau, indices, scale=scale)
 
-
+    if as_equal:
+        data_length = (traj.tensor()[..., :3].view(-1, 3).max(dim=0).values -
+                    traj.tensor()[..., :3].view(-1, 3).min(dim=0).values)
+        data_half = traj.tensor()[..., :3].view(-1, 3).min(dim=0).values + data_length/2
+        half_ax_length = 1.03 * data_length.max()/2
+        ax.set_xlim(data_half[0] - half_ax_length, data_half[0] + half_ax_length)
+        ax.set_ylim(data_half[1] - half_ax_length, data_half[1] + half_ax_length)
+        ax.set_zlim(data_half[2] - half_ax_length, data_half[2] + half_ax_length)
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')
