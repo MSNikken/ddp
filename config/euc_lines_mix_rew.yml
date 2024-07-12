@@ -14,6 +14,7 @@ pose_only: True
 diffusion: 'models.GaussianInvDynDiffusion'
 returns_condition: True
 horizon: 100
+clip_denoised: False
 
 # Training
 sample_freq: 10000

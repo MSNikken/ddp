@@ -11,6 +11,7 @@ normalizer: 'GaussianNormalizer'
 # Model
 diffusion: 'models.GaussianInvDynDiffusion'
 returns_condition: False
+clip_denoised: False
 
 # Training
 sample_freq: 10000
