@@ -44,7 +44,7 @@ if __name__ == '__main__':
         #     'values': [1, 10]
         # }
         'inference_returns': {
-            'values': [0, -0.01, -0.1]
+            'values': [0, -0.1, -0.2, -0.3, -0.5]
         }
     })
     sweep_config['parameters'] = parameters_dict
