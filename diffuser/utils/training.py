@@ -403,20 +403,21 @@ class Trainer(object):
     def render_scenario_samples(self, batch_size=2, n_samples=2):
         log_entries = {}
         # TODO: Configure scenario from config file
-        scn_conditions = [torch.rand(2, 1, self.dataset.observation_dim, device=self.device) * 2 - 1,
-                          torch.rand(2, 1, self.dataset.observation_dim, device=self.device) * 2 - 1]
+        scn_conditions = [torch.rand(3, 1, self.dataset.observation_dim, device=self.device) * 2 - 1,
+                          torch.rand(3, 1, self.dataset.observation_dim, device=self.device) * 2 - 1]
         scn_conditions = [self.dataset.normalizer.unnormalize(cond, 'observations') for cond in scn_conditions]
         scn_conditions[0][0, :, :3] = torch.tensor([0.5, 0.35, 0.5])
-        scn_conditions[0][1, :, :3] = torch.tensor([0.5, 0.65, 0.5])
+        scn_conditions[0][1, :, :3] = torch.tensor([0.8, 0.5, 0.5])
+        scn_conditions[0][2, :, :3] = torch.tensor([0.5, 0.65, 0.5])
         scn_conditions[1][0, :, :3] = torch.tensor([0.3, 0.5, 0.1])
-        scn_conditions[1][1, :, :3] = torch.tensor([0.7, 0.5, 0.9])
+        scn_conditions[1][1, :, :3] = torch.tensor([0.7, 0.5, 0.1])
+        scn_conditions[1][2, :, :3] = torch.tensor([0.7, 0.5, 0.9])
         scn_conditions = [self.dataset.normalizer.normalize(cond, 'observations') for cond in scn_conditions]
 
         for i in range(batch_size):
-
-            # get a two random points in normalized space
+            # get random points in normalized space
             conditions_sample = scn_conditions[i]
-            conditions = {k: v for k, v in zip([0, self.ema_model.horizon - 1], conditions_sample)}
+            conditions = {k: v for k, v in zip([0, int(self.ema_model.horizon/2), self.ema_model.horizon - 1], conditions_sample)}
             conditions = to_device(conditions, self.device)
             # repeat each item in conditions `n_samples` times
             conditions = apply_dict(
