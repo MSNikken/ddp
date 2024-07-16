@@ -13,7 +13,7 @@ pose_only: True
 # Model
 diffusion: 'models.GaussianInvDynDiffusion'
 returns_condition: True
-horizon: 100
+horizon: 32
 clip_denoised: False
 
 # Training
@@ -22,6 +22,7 @@ loss_type: 'state_l2'
 train_data_loss: True
 n_train_steps: 150000
 inference_returns: [0.0, -0.1]
+inference_horizon: 100
 
 # Representation/visualization
 renderer: 'utils.PathRenderer'

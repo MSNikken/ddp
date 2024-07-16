@@ -61,6 +61,7 @@ class Trainer(object):
         save_parallel=False,
         n_reference=8,
         inference_returns=1,
+        inference_horizon=100,
         bucket=None,
         train_device='cuda',
         save_checkpoints=False,
@@ -96,6 +97,7 @@ class Trainer(object):
         self.bucket = bucket
         self.n_reference = n_reference
         self.inference_returns = np.array(inference_returns, dtype=np.float32)
+        self.inference_horizon = inference_horizon
 
         self.reset_parameters()
         self.step = 0
@@ -260,9 +262,10 @@ class Trainer(object):
                 returns = None
 
             if self.ema_model.model.calc_energy:
-                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns,
+                                                                 horizon=self.inference_horizon)
             else:
-                samples = self.ema_model.conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.conditional_sample(conditions, returns=returns, horizon=self.inference_horizon)
 
             samples = to_np(samples)
 
@@ -317,9 +320,10 @@ class Trainer(object):
                 returns = None
 
             if self.ema_model.model.calc_energy:
-                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns,
+                                                                 horizon=self.inference_horizon)
             else:
-                samples = self.ema_model.conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.conditional_sample(conditions, returns=returns, horizon=self.inference_horizon)
 
             samples = to_np(samples)
 
@@ -362,7 +366,7 @@ class Trainer(object):
 
             # get a two random points in normalized space
             conditions_sample = torch.rand(2, 1, self.dataset.observation_dim, device=self.device)*2 - 1
-            conditions = {k: v for k, v in zip([0, self.ema_model.horizon-1], conditions_sample)}
+            conditions = {k: v for k, v in zip([0, self.inference_horizon-1], conditions_sample)}
             conditions = to_device(conditions, self.device)
             # repeat each item in conditions `n_samples` times
             conditions = apply_dict(
@@ -378,9 +382,10 @@ class Trainer(object):
                 returns = None
 
             if self.ema_model.model.calc_energy:
-                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns,
+                                                                 horizon=self.inference_horizon)
             else:
-                samples = self.ema_model.conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.conditional_sample(conditions, returns=returns, horizon=self.inference_horizon)
 
             samples = to_np(samples)
 
@@ -417,7 +422,8 @@ class Trainer(object):
         for i in range(batch_size):
             # get random points in normalized space
             conditions_sample = scn_conditions[i]
-            conditions = {k: v for k, v in zip([0, int(self.ema_model.horizon/2), self.ema_model.horizon - 1], conditions_sample)}
+            conditions = {k: v for k, v in zip([0, int(self.inference_horizon/2), self.inference_horizon - 1],
+                                               conditions_sample)}
             conditions = to_device(conditions, self.device)
             # repeat each item in conditions `n_samples` times
             conditions = apply_dict(
@@ -433,9 +439,10 @@ class Trainer(object):
                 returns = None
 
             if self.ema_model.model.calc_energy:
-                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns,
+                                                                 horizon=self.inference_horizon)
             else:
-                samples = self.ema_model.conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.conditional_sample(conditions, returns=returns, horizon=self.inference_horizon)
 
             samples = to_np(samples)
 
@@ -452,11 +459,11 @@ class Trainer(object):
             return log_entries
 
     def kinematic_validation(self, batch_size=10, n_samples=10):
-        paths = torch.empty((batch_size*n_samples, self.ema_model.horizon, 6), device=self.device)
+        paths = torch.empty((batch_size*n_samples, self.inference_horizon, 6), device=self.device)
         for i in range(batch_size):
             # get a two random points in normalized space
             conditions_sample = torch.rand(2, 1, self.dataset.observation_dim, device=self.device)*2 - 1
-            conditions = {k: v for k, v in zip([0, self.ema_model.horizon-1], conditions_sample)}
+            conditions = {k: v for k, v in zip([0, self.inference_horizon-1], conditions_sample)}
             conditions = to_device(conditions, self.device)
             # repeat each item in conditions `n_samples` times
             conditions = apply_dict(
@@ -472,9 +479,10 @@ class Trainer(object):
                 returns = None
 
             if self.ema_model.model.calc_energy:
-                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.grad_conditional_sample(conditions, returns=returns,
+                                                                 horizon=self.inference_horizon)
             else:
-                samples = self.ema_model.conditional_sample(conditions, returns=returns)
+                samples = self.ema_model.conditional_sample(conditions, returns=returns, horizon=self.inference_horizon)
 
             if self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion:
                 path = self.dataset.normalizer.unnormalize(samples, 'observations')[..., :6]

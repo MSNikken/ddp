@@ -175,6 +175,7 @@ def main(**deps):
         bucket=Config.bucket,
         n_reference=Config.n_reference,
         inference_returns=Config.inference_returns,
+        inference_horizon=Config.inference_horizon,
         train_device=torch.device(Config.device),
         save_checkpoints=Config.save_checkpoints,
     )
