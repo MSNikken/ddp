@@ -39,6 +39,7 @@ def main(**deps):
     renderer = render_config()
     observation_dim = dataset.observation_dim
     action_dim = dataset.action_dim
+    returns_dim = dataset.returns_dim
 
     # -----------------------------------------------------------------------------#
     # ------------------------------ model & trainer ------------------------------#
@@ -134,6 +135,7 @@ def main(**deps):
             savepath='model_config.pkl',
             horizon=Config.horizon,
             transition_dim=observation_dim,
+            returns_dim=returns_dim,
             cond_dim=observation_dim,
             dim_mults=Config.dim_mults,
             returns_condition=Config.returns_condition,
@@ -148,6 +150,7 @@ def main(**deps):
             savepath='model_config.pkl',
             horizon=Config.horizon,
             transition_dim=observation_dim + action_dim,
+            returns_dim=returns_dim,
             cond_dim=observation_dim,
             dim_mults=Config.dim_mults,
             returns_condition=Config.returns_condition,

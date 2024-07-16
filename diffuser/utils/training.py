@@ -95,7 +95,7 @@ class Trainer(object):
 
         self.bucket = bucket
         self.n_reference = n_reference
-        self.inference_returns = inference_returns
+        self.inference_returns = np.array(inference_returns, dtype=np.float32)
 
         self.reset_parameters()
         self.step = 0
@@ -255,7 +255,7 @@ class Trainer(object):
 
             ## [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1)*self.inference_returns, self.device)
+                returns = to_device(torch.ones(n_samples, self.dataset.returns_dim)*self.inference_returns, self.device)
             else:
                 returns = None
 
@@ -312,7 +312,7 @@ class Trainer(object):
 
             ## [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1)*self.inference_returns, self.device)
+                returns = to_device(torch.ones(n_samples, self.dataset.returns_dim)*self.inference_returns, self.device)
             else:
                 returns = None
 
@@ -373,7 +373,7 @@ class Trainer(object):
 
             # [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1)*self.inference_returns, self.device)
+                returns = to_device(torch.ones(n_samples, self.dataset.returns_dim)*self.inference_returns, self.device)
             else:
                 returns = None
 
@@ -428,7 +428,7 @@ class Trainer(object):
 
             # [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1) * self.inference_returns, self.device)
+                returns = to_device(torch.ones(n_samples, self.dataset.returns_dim) * self.inference_returns, self.device)
             else:
                 returns = None
 
@@ -467,7 +467,7 @@ class Trainer(object):
 
             # [ n_samples x horizon x (action_dim + observation_dim) ]
             if self.ema_model.returns_condition:
-                returns = to_device(torch.ones(n_samples, 1)*self.inference_returns, self.device)
+                returns = to_device(torch.ones(n_samples, self.dataset.returns_dim)*self.inference_returns, self.device)
             else:
                 returns = None
 

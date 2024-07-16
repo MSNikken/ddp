@@ -45,6 +45,7 @@ class SequenceDataset(torch.utils.data.Dataset):
 
         self.observation_dim = fields.observations.shape[-1]
         self.action_dim = fields.actions.shape[-1]
+        self.returns_dim = fields.rewards.shape[-1]
 
         self.fields = fields
         self.n_episodes = fields.n_episodes
@@ -283,6 +284,7 @@ class GeneratedDataset(object):
 
         self.observation_dim = fields.observations.shape[-1]
         self.action_dim = fields.actions.shape[-1]
+        self.returns_dim = fields.rewards.shape[-1]
 
         self.fields = fields
         self.n_episodes = fields.n_episodes
@@ -343,8 +345,8 @@ class GeneratedDataset(object):
             else:
                 rewards = self.fields.rewards[path_ind, start:]
             discounts = self.discounts[:len(rewards)]
-            returns = (discounts * rewards).sum()
-            returns = np.array([returns / self.returns_scale], dtype=np.float32)
+            returns = (discounts * rewards).sum(axis=0)
+            returns = (returns/self.returns_scale).astype(np.float32)
             batch = RewardBatch(trajectories, conditions, returns)
         else:
             batch = Batch(trajectories, conditions)

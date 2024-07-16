@@ -111,6 +111,7 @@ class TemporalUnet(nn.Module):
         horizon,
         transition_dim,
         cond_dim,
+        returns_dim=1,
         dim=128,
         dim_mults=(1, 2, 4, 8),
         returns_condition=False,
@@ -131,8 +132,8 @@ class TemporalUnet(nn.Module):
             mish = True
             act_fn = nn.Mish()
 
-        self.time_dim = dim
-        self.returns_dim = dim
+        #self.time_dim = dim
+        self.returns_dim = returns_dim
 
         self.time_mlp = nn.Sequential(
             SinusoidalPosEmb(dim),
@@ -147,7 +148,7 @@ class TemporalUnet(nn.Module):
 
         if self.returns_condition:
             self.returns_mlp = nn.Sequential(
-                        nn.Linear(1, dim),
+                        nn.Linear(self.returns_dim, dim),
                         act_fn,
                         nn.Linear(dim, dim * 4),
                         act_fn,
@@ -291,6 +292,7 @@ class TemporalUnet(nn.Module):
 
         return x
 
+
 class MLPnet(nn.Module):
     def __init__(
         self,
@@ -367,7 +369,7 @@ class MLPnet(nn.Module):
             t = torch.cat([t, returns_embed], dim=-1)
 
         inp = torch.cat([t, cond, x], dim=-1)
-        out  = self.mlp(inp)
+        out = self.mlp(inp)
 
         if self.calc_energy:
             energy = ((out - x) ** 2).mean()
