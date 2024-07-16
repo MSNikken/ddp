@@ -155,6 +155,38 @@ class BSplinePoseMixReward:
     reward_weights = np.array([5, 1])
 
 
+class LinesPoseObst:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
+    dist_reward = False
+    reward_weights = None
+
+
+class LinesPoseDist:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = None
+    dist_reward = True
+    reward_weights = None
+
+
 class LinesPoseMixRew:
     method = 'chspline'
     mode = 'lines'
@@ -169,6 +201,22 @@ class LinesPoseMixRew:
     zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
     dist_reward = True
     reward_weights = np.array([5, 1])
+
+
+class LinesPoseObstDist:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
+    dist_reward = True
+    reward_weights = None
 
 
 class BSplineTesting:
@@ -342,12 +390,12 @@ if __name__ == "__main__":
     # dataset = SplineDataset(config)
 
     #
-    config = LinesPoseMixRew
-    SplineDataset(config)
+    config = LinesPoseObst
+    dataset = SplineDataset(config)
     gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
-    paths, (supp, interval) = gen.generate_lines(n_traj=5, n_step=10, n_interval=3)
-    fig, ax = plot_trajectory(paths, show=False)
+    paths, (supp, interval) = gen.generate_lines(n_traj=1, n_step=10, n_interval=3)
+    fig, ax = plot_trajectory(paths, show=True, as_equal=True, block=False)
     ax.set_title('Paths')
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
+    # ax.set_xlim(0, 1)
+    # ax.set_ylim(0, 1)
     fig.show()
