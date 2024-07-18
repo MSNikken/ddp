@@ -43,8 +43,11 @@ if __name__ == '__main__':
         # 'max_kin_weight': {
         #     'values': [1, 10]
         # }
-        'inference_returns': {
-            'values': [0, -0.1, -0.2, -0.3, -0.5]
+        # 'inference_returns': {
+        #     'values': [0, -0.1, -0.2, -0.3, -0.5]
+        # }
+        'horizon': {
+            'values': [8, 32, 100]
         }
     })
     sweep_config['parameters'] = parameters_dict
