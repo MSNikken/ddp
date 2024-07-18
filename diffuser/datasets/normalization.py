@@ -148,10 +148,17 @@ class GaussianNormalizer(Normalizer):
             return (x - torch.tensor(self.means, device=x.device)) / torch.tensor(self.stds, device=x.device)
         return (x - self.means) / self.stds
 
-    def unnormalize(self, x):
+    def unnormalize(self, x, clip=True):
         if type(x) is torch.Tensor:
-            return x * torch.tensor(self.stds, device=x.device) + torch.tensor(self.means, device=x.device)
-        return x * self.stds + self.means
+            unnormalized = x * torch.tensor(self.stds, device=x.device) + torch.tensor(self.means, device=x.device)
+            if clip:
+                unnormalized = torch.clip(unnormalized, torch.tensor(self.mins, device=unnormalized.device),
+                                          torch.tensor(self.maxs, device=unnormalized.device))
+        else:
+            unnormalized = x * self.stds + self.means
+            if clip:
+                unnormalized = np.clip(unnormalized, self.mins, self.maxs)
+        return unnormalized
 
 
 class LimitsNormalizer(Normalizer):
