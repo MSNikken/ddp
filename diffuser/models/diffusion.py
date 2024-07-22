@@ -423,11 +423,14 @@ class GaussianInvDynDiffusion(nn.Module):
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
     def p_mean_variance(self, x, cond, t, returns=None):
-        if self.returns_condition:
+        if self.returns_condition and returns is not None:
             # epsilon could be epsilon or x0 itself
             epsilon_cond = self.model(x, cond, t, returns, use_dropout=False)
             epsilon_uncond = self.model(x, cond, t, returns, force_dropout=True)
             epsilon = epsilon_uncond + self.condition_guidance_w*(epsilon_cond - epsilon_uncond)
+        elif self.returns_condition and returns is None:
+            returns = torch.empty((x.shape[0], self.model.returns_dim), device=x.device)  # Embeddings will be set to 0
+            epsilon = self.model(x, cond, t, returns, force_dropout=True)
         else:
             epsilon = self.model(x, cond, t)
 
