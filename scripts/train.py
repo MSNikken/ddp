@@ -21,6 +21,7 @@ def main(**deps):
         preprocess_fns=Config.preprocess_fns,
         use_padding=Config.use_padding,
         max_path_length=Config.max_path_length,
+        condition_indices=Config.condition_indices,
         include_returns=Config.include_returns,
         returns_scale=Config.returns_scale,
         discount=Config.discount,

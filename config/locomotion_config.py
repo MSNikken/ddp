@@ -49,6 +49,7 @@ class Config(ParamsProto):
     returns_scale = 400.0   # Determined using rewards from the dataset
     dt = 0.08   # time step in seconds
     pose_only = False
+    condition_indices = [0]
 
     ## training
     n_steps_per_epoch = 10000

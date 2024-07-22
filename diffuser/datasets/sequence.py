@@ -256,15 +256,18 @@ class ValueDataset(SequenceDataset):
 
 class GeneratedDataset(object):
     def __init__(self, env='BSplineDefault', horizon=64, normalizer='LimitsNormalizer', preprocess_fns=[],
-                 max_path_length=1000,
-                 max_n_episodes=10000, termination_penalty=0, use_padding=True, discount=0.99, returns_scale=1000,
+                 max_path_length=1000, max_n_episodes=10000, termination_penalty=0, condition_indices=None,
+                 use_padding=True, discount=0.99, returns_scale=1000,
                  include_returns=False, regen_reward=True, repres='se3'):
         assert repres in {'cart', 'se3'}
+        if condition_indices is None:
+            condition_indices = []
         self.repres = repres
         self.preprocess_fn = get_preprocess_fn(preprocess_fns, None)
         self.returns_scale = returns_scale
         self.horizon = horizon
         self.max_path_length = max_path_length
+        self.condition_indices = condition_indices
         self.regen_reward = regen_reward
         self.discount = discount
         self.discounts = self.discount ** np.arange(self.max_path_length)[:, None]
@@ -324,6 +327,7 @@ class GeneratedDataset(object):
         '''
             condition on current and final observation for planning
         '''
+        return {k: observations[k] for k in self.condition_indices}
         return {0: observations[0], observations.shape[0]-1: observations[-1]}
 
     def __len__(self):
