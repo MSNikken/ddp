@@ -48,6 +48,9 @@ class Trainer(object):
         diffusion_model,
         dataset,
         renderer,
+        dataset_val=None,
+        val_batch_size=32,
+        val_nr_batch=2,
         ema_decay=0.995,
         train_batch_size=32,
         train_lr=2e-5,
@@ -84,6 +87,8 @@ class Trainer(object):
         self.gradient_accumulate_every = gradient_accumulate_every
 
         self.dataset = dataset
+        self.dataset_val = dataset_val
+        self.val_nr_batch = val_nr_batch
 
         self.dataloader = cycle(torch.utils.data.DataLoader(
             self.dataset, batch_size=train_batch_size, num_workers=0, shuffle=True, pin_memory=True
@@ -91,6 +96,9 @@ class Trainer(object):
         self.dataloader_vis = cycle(torch.utils.data.DataLoader(
             self.dataset, batch_size=1, num_workers=0, shuffle=True, pin_memory=True
         ))
+        self.dataloader_val = cycle(torch.utils.data.DataLoader(
+            self.dataset_val, batch_size=val_batch_size, num_workers=0, shuffle=True, pin_memory=True
+        )) if self.dataset_val is not None else None
         self.renderer = renderer
         self.optimizer = torch.optim.Adam(diffusion_model.parameters(), lr=train_lr)
 
@@ -157,12 +165,13 @@ class Trainer(object):
             if self.sample_freq and self.step % self.sample_freq == 0:
                 if (self.model.__class__ == diffuser.models.diffusion.GaussianInvDynDiffusion
                         or self.model.__class__ == diffuser.models.lie_diffusion.SE3Diffusion):
-                    log_render = self.inv_render_samples()
-                    log_inpaint = self.render_inpainting_samples()
-                    log_scen = self.render_scenario_samples()
-                    log_kinval = self.kinematic_validation()
-                    if log_render is not None and log_inpaint is not None:
-                        wandb.log({**log_render, **log_inpaint, **log_scen, **log_kinval})
+                    logs = [self.validate(), self.inv_render_samples(), self.render_inpainting_samples(),
+                            self.render_scenario_samples(), self.kinematic_validation()]
+                    log_dict = {}
+                    logs = [log for log in logs if log is not None]
+                    for log in logs:
+                        log_dict.update(log)
+                    wandb.log(log_dict)
                 elif self.model.__class__ == diffuser.models.diffusion.ActionGaussianDiffusion:
                     pass
                 else:
@@ -506,3 +515,22 @@ class Trainer(object):
                     wandb.plot.histogram(table_topk, 'kin score',
                                          title=f'Top {k_top*100}% generation kin. score distribution')
                 }
+
+    def validate(self):
+        if self.dataloader_val is None:
+            return None
+
+        self.model.eval()
+        with torch.no_grad():
+            loss_sum = torch.zeros(1, device=self.device)
+            for i in range(self.val_nr_batch):
+                batch = next(self.dataloader_val)
+                batch = batch_to_device(batch, device=self.device)
+                loss, infos = self.model.loss(*batch)
+                loss_sum += loss
+
+        self.model.train()
+        return {'val_loss': (loss_sum/self.val_nr_batch).item()}
+
+
+

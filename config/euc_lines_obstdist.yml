@@ -24,6 +24,10 @@ n_train_steps: 150000
 inference_returns: [0.0, -0.1]
 inference_horizon: 100
 
+dataset_val: 'datasets.LinesPoseObstDist'
+val_batch_size: 64
+val_nr_batch: 2
+
 # Representation/visualization
 renderer: 'utils.PathRenderer'
 representation: 'cart'

@@ -11,6 +11,7 @@ class Config(ParamsProto):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     bucket = os.path.normpath(os.path.join(os.getcwd(), os.pardir, 'weights'))
     dataset = 'hopper-medium-expert-v2'
+    dataset_val = None
 
     ## model
     model = 'models.TemporalUnet'
@@ -75,6 +76,9 @@ class Config(ParamsProto):
     kin_weight_cutoff = -1
     kin_norm = False
     train_data_loss = True
+    val_batch_size = 64
+    val_nr_batch = 1
+
 
 
 config_file = os.environ.get('CONFIG')

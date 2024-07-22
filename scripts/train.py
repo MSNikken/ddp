@@ -29,6 +29,23 @@ def main(**deps):
         repres=Config.representation
     )
 
+    dataset_val_config = utils.Config(
+        Config.loader,
+        savepath='dataset_config.pkl',
+        env=Config.dataset_val,
+        horizon=Config.horizon,
+        normalizer=Config.normalizer,
+        preprocess_fns=Config.preprocess_fns,
+        use_padding=Config.use_padding,
+        max_path_length=Config.max_path_length,
+        condition_indices=Config.condition_indices,
+        include_returns=Config.include_returns,
+        returns_scale=Config.returns_scale,
+        discount=Config.discount,
+        termination_penalty=Config.termination_penalty,
+        repres=Config.representation
+    )
+
     render_config = utils.Config(
         Config.renderer,
         savepath='render_config.pkl',
@@ -37,6 +54,7 @@ def main(**deps):
     )
 
     dataset = dataset_config()
+    dataset_val = dataset_val_config() if Config.dataset_val is not None else None
     renderer = render_config()
     observation_dim = dataset.observation_dim
     action_dim = dataset.action_dim
@@ -179,6 +197,8 @@ def main(**deps):
         inference_horizon=Config.inference_horizon,
         train_device=torch.device(Config.device),
         save_checkpoints=Config.save_checkpoints,
+        val_batch_size=Config.val_batch_size,
+        val_nr_batch=Config.val_nr_batch,
     )
 
     # -----------------------------------------------------------------------------#
@@ -189,7 +209,7 @@ def main(**deps):
 
     diffusion = diffusion_config(model, normalizer=dataset.normalizer)
 
-    trainer = trainer_config(diffusion, dataset, renderer)
+    trainer = trainer_config(diffusion, dataset, renderer, dataset_val=dataset_val)
 
     # -----------------------------------------------------------------------------#
     # ------------------------ test forward & backward pass -----------------------#
