@@ -15,6 +15,9 @@ diffusion: 'models.GaussianInvDynDiffusion'
 returns_condition: True
 horizon: 32
 clip_denoised: False
+condition_indices:
+  - 0
+  - 'random'
 
 # Training
 sample_freq: 10000
