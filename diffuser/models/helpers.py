@@ -103,6 +103,15 @@ def apply_conditioning(x, conditions, action_dim):
     return x
 
 
+def instantiate_conditions(x, conditions):
+    if 'random' not in conditions.keys():
+        return conditions
+    rand_ind = (np.random.rand(int(conditions['random'][0]))*x.shape[-2]).astype(np.int32)
+    rand_conditions = {k: x[..., k, :].clone() for k in rand_ind}
+    rand_conditions.update(conditions)
+    del rand_conditions['random']
+    return rand_conditions
+
 # -----------------------------------------------------------------------------#
 # ------------------------ physical evaluation --------------------------------#
 # -----------------------------------------------------------------------------#

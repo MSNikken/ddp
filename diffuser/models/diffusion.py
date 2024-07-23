@@ -9,7 +9,7 @@ from .helpers import (
     cosine_beta_schedule,
     extract,
     apply_conditioning,
-    Losses, traj_euc2se3,
+    Losses, traj_euc2se3, instantiate_conditions,
 )
 
 
@@ -559,6 +559,7 @@ class GaussianInvDynDiffusion(nn.Module):
         else:
             batch_size = len(x)
             t = torch.randint(0, self.n_diffsteps, (batch_size,), device=x.device).long()
+            cond = instantiate_conditions(x[:, :, self.action_dim:], cond)
             diffuse_loss, info = self.p_losses(x[:, :, self.action_dim:], cond, t, returns)
             # Calculating inv loss
             x_t = x[:, :-1, self.action_dim:]

@@ -325,10 +325,11 @@ class GeneratedDataset(object):
 
     def get_conditions(self, observations):
         '''
-            condition on current and final observation for planning
+            condition on observations for planning
         '''
-        return {k: observations[k] for k in self.condition_indices}
-        return {0: observations[0], observations.shape[0]-1: observations[-1]}
+        conditions = {k: observations[k] for k in self.condition_indices if isinstance(k, int)}
+        conditions['random'] = np.array([self.condition_indices.count('random')])
+        return conditions
 
     def __len__(self):
         return len(self.indices)
