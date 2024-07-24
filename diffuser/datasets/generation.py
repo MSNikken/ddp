@@ -237,6 +237,23 @@ class LinesPoseObstDist:
     reward_weights = None
 
 
+class LinesPoseObstDense:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0, 0, 0])
+    xmax = np.array([1, 1, 1])
+    nr_trajectories = 10000
+    nr_intervals = 4  # nr interpolated segments in a trajectory
+    nr_steps = 50  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
+    zone_dist_scale = 0.1
+    dist_reward = False
+    reward_weights = None
+
+
 class BSplineTesting:
     method = 'bspline'
     mode = 'lines'
