@@ -1,0 +1,46 @@
+# DATA
+#dataset: 'kitchen-complete-v0'
+#preprocess_fns: ['only_trajectory','joints_to_cart','cart_to_se3']
+
+loader: 'datasets.GeneratedDataset'
+dataset: 'datasets.LinesPoseObstDense'
+returns_scale: 100.0
+dt: 0.08
+normalizer: 'GaussianNormalizer'
+pose_only: True
+
+
+# Model
+diffusion: 'models.GaussianInvDynDiffusion'
+returns_condition: True
+horizon: 32
+clip_denoised: False
+condition_indices:
+  - 'random'
+
+# Training
+n_train_steps: 1000000
+
+sample_freq: 500000
+log_freq: 500000
+save_freq: 500000
+
+loss_type: 'state_l2'
+train_data_loss: True
+inference_returns: -0.01
+inference_horizon: 100
+
+train_kinematic_loss: True
+kinematic_loss_type: 'kinematic_pose_linf'
+kinematic_scale: 1000
+max_kin_weight: 1
+kin_weight_cutoff: 50
+kin_norm: True
+
+dataset_val: 'datasets.LinesPoseObst'
+val_batch_size: 64
+val_nr_batch: 2
+
+# Representation/visualization
+renderer: 'utils.PathRenderer'
+representation: 'cart'
