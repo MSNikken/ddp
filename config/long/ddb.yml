@@ -16,7 +16,7 @@ returns_condition: True
 horizon: 32
 clip_denoised: False
 condition_indices:
-  - 'random'
+  - 0
 
 # Training
 n_train_steps: 1000000
@@ -30,7 +30,7 @@ train_data_loss: True
 inference_returns: -0.01
 inference_horizon: 100
 
-train_kinematic_loss: True
+train_kinematic_loss: False
 kinematic_loss_type: 'kinematic_pose_linf'
 kinematic_scale: 1000
 max_kin_weight: 1
