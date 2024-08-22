@@ -1,8 +1,0 @@
-#goal
-geometry_msgs/PoseStamped goal_pose
----
-#result
-geometry_msgs/PoseStamped final_pose
----
-#feedback
-geometry_msgs/PoseStamped current_pose
