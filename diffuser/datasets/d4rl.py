@@ -22,7 +22,11 @@ def suppress_output():
 
 with suppress_output():
     ## d4rl prints out a variety of warnings
-    import d4rl
+    try:
+        import d4rl
+    except ImportError:
+        import warnings
+        warnings.warn('Warning: Not importing d4rl')
 
 #-----------------------------------------------------------------------------#
 #-------------------------------- general api --------------------------------#

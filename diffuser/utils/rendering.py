@@ -6,7 +6,10 @@ import imageio
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import gym
-import mujoco_py as mjc
+try:
+    import mujoco_py as mjc
+except:
+    print('Failed to import mujoco_py, mujoco renderer unavailable')
 import warnings
 import pdb
 import pypose as pp
