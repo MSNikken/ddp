@@ -254,7 +254,7 @@ class LinesPoseObstDense:
     reward_weights = None
 
 
-class FrankLinesPoseObstDense:
+class FrankaLinesPoseObstDense:
     method = 'chspline'
     mode = 'lines'
     xmin = np.array([0.3, -0.25, 0.3])
