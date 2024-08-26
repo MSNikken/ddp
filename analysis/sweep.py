@@ -46,8 +46,16 @@ if __name__ == '__main__':
         # 'inference_returns': {
         #     'values': [0, -0.1, -0.2, -0.3, -0.5]
         # }
-        'horizon': {
-            'values': [8, 32, 100]
+        # 'horizon': {
+        #     'values': [8, 32, 100]
+        # }
+        'train_kinematic_loss': {
+            'values': [True, False]
+        },
+        'condition_indices': {
+            'values': [
+                [0], [0, 'random'], [0, -1], [0, 'random', -1]
+            ]
         }
     })
     sweep_config['parameters'] = parameters_dict
