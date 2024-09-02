@@ -77,6 +77,7 @@ def load_dataset_config(config, val=False):
         preprocess_fns=config.preprocess_fns,
         use_padding=config.use_padding,
         max_path_length=config.max_path_length,
+        max_n_episodes=config.max_n_episodes,
         condition_indices=config.condition_indices,
         include_returns=config.include_returns,
         returns_scale=config.returns_scale,

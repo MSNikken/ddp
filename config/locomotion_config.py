@@ -43,6 +43,7 @@ class Config(ParamsProto):
     include_returns = True
     discount = 0.99
     max_path_length = 1000
+    max_n_episodes = 10000
     hidden_dim = 256
     ar_inv = False
     train_only_inv = False
