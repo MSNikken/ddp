@@ -1,9 +1,7 @@
-import typing
-from collections import namedtuple
-
 import numpy as np
 import torch, pypose as pp
-from matplotlib import pyplot as plt
+
+from diffuser.datasets.reward import reward_by_zone, reward_distance_to_end, Zone
 
 try:
     from ..utils.visualization import plot_trajectory
@@ -11,8 +9,6 @@ try:
 except ImportError:
     from diffuser.utils.visualization import plot_trajectory, plot_trajectory_2d, draw_rectangles
     from diffuser.models.helpers import dist_SE3, kinematic_consistency, kinematic_pose_consistency
-
-Zone = namedtuple('Zone', ['xmin', 'ymin', 'zmin', 'xmax', 'ymax', 'zmax'])
 
 
 def add_pose_noise(x, std, gamma=100):
@@ -43,28 +39,6 @@ def approx_instant_twist(H, dt=1.0):
         H_inter = pp.Exp(pp.se3(T[..., i-1, :] * dt / 2)) @ H[..., i-1, :]
         T[..., i, :] = -2 / dt * pp.Log(H_inter @ H[..., i, :].Inv())
     return T
-
-
-def reward_by_zone(H, zones: typing.List[Zone], dist_scale=None):
-    rewards = torch.zeros(H.shape[:-1], device=H.device, dtype=H.dtype)
-    for zone in zones:
-        if dist_scale is None:
-            mask = ((H[..., 0] > zone.xmin) & (H[..., 0] < zone.xmax) &
-                    (H[..., 1] > zone.ymin) & (H[..., 1] < zone.ymax) &
-                    (H[..., 2] > zone.zmin) & (H[..., 2] < zone.zmax))
-            rewards[mask] = torch.minimum(rewards[mask], torch.tensor([-1.0]))
-            continue
-
-        dx = torch.clip(torch.maximum(zone.xmin - H[..., 0], H[..., 0] - zone.xmax), min=0)
-        dy = torch.clip(torch.maximum(zone.ymin - H[..., 1], H[..., 1] - zone.ymax), min=0)
-        dz = torch.clip(torch.maximum(zone.zmin - H[..., 2], H[..., 2] - zone.zmax), min=0)
-        dist = torch.sqrt(dx*dx + dy*dy + dz*dz)
-        rewards = torch.minimum(rewards, -torch.exp(-4.6*dist/dist_scale))
-    return rewards
-
-
-def reward_distance_to_end(H, xmin, xmax):
-    return -(torch.linalg.vector_norm((H[..., :3] - H[..., -1, :3][..., None, :]), dim=-1)/np.linalg.norm(xmax-xmin))**2
 
 
 class BSplineDefault:
