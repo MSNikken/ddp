@@ -3,7 +3,7 @@
 #preprocess_fns: ['only_trajectory','joints_to_cart','cart_to_se3']
 
 loader: 'datasets.GeneratedDataset'
-dataset: 'datasets.FrankaLinesPoseObstDense'
+dataset: 'datasets.FrankaLinesPoseObstDense2'
 returns_scale: 100.0
 dt: 0.08
 normalizer: 'GaussianNormalizer'
