@@ -245,6 +245,23 @@ class FrankaLinesPoseObstDense:
     reward_weights = None
 
 
+class FrankaLinesPoseObstDense2:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 2  # nr interpolated segments in a trajectory
+    nr_steps = 32  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
+    zone_dist_scale = 0.1
+    dist_reward = False
+    reward_weights = None
+
+
 class BSplineTesting:
     method = 'bspline'
     mode = 'lines'
