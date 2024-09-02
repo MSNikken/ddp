@@ -103,14 +103,14 @@ def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True,
     return fig, ax
 
 
-def _plot_position_2d(ax, traj: pp.SE3_type, dim1, dim2, indices, marker=True, line=True, start_marker=True):
+def _plot_position_2d(ax, traj: pp.SE3_type, dim1, dim2, indices, marker=True, line=True, start_marker=True, **kwargs):
     traj = traj.numpy()
     if marker:
-        ax.scatter(traj[indices, dim1], traj[indices, dim2], marker='^', zorder=0, s=20)
+        ax.scatter(traj[indices, dim1], traj[indices, dim2], marker='^', zorder=0, s=20, **kwargs)
     if line:
-        ax.plot(traj[indices, dim1], traj[indices, dim2], zorder=0.5)
+        ax.plot(traj[indices, dim1], traj[indices, dim2], zorder=0.5, **kwargs)
     if start_marker:
-        ax.scatter(traj[0, dim1], traj[0, dim2], marker='*', s=100)
+        ax.scatter(traj[0, dim1], traj[0, dim2], marker='*', s=100, **kwargs)
 
 
 def _plot_orientation_2d(ax, H: pp.SE3_type, dim1, dim2, indices, scale=0.05):
@@ -138,15 +138,7 @@ def _plot_orientation_2d(ax, H: pp.SE3_type, dim1, dim2, indices, scale=0.05):
 def plot_trajectory_2d(traj, step=1, show=True, block=True, marker=False, rot=True, plot_end=False, detail_ends=1,
                     as_equal=False, view='xy'):
     plot_dims = [view_dict[dim] for dim in [*view]]
-    traj = torch.tensor(traj) if isinstance(traj, np.ndarray) else traj.cpu()
-    if traj.ndim == 2:
-        traj = traj[None, ...]
-
-    if not (isinstance(traj, pp.LieTensor) and traj.ltype == pp.SE3_type):
-        if traj.shape[-1] == 7:
-            traj = pp.SE3(traj)
-        else:
-            traj = pp.Exp(pp.se3(traj))
+    traj = tensor2batch_traj(traj)
 
     if rot:
         traj = normalize_quaternions(traj)
@@ -173,6 +165,46 @@ def plot_trajectory_2d(traj, step=1, show=True, block=True, marker=False, rot=Tr
         _plot_position_2d(ax, tau, *plot_dims, indices, marker)
         if rot:
             _plot_orientation_2d(ax, tau, *plot_dims, indices, scale=scale)
+
+    if as_equal:
+        data_length = (traj.tensor()[..., :3].view(-1, 3).max(dim=0).values -
+                    traj.tensor()[..., :3].view(-1, 3).min(dim=0).values)
+        data_half = traj.tensor()[..., :3].view(-1, 3).min(dim=0).values + data_length/2
+        half_ax_length = 1.03 * data_length.max()/2
+        ax.set_xlim(data_half[plot_dims[0]] - half_ax_length, data_half[plot_dims[0]] + half_ax_length)
+        ax.set_ylim(data_half[plot_dims[1]] - half_ax_length, data_half[plot_dims[1]] + half_ax_length)
+
+    ax.set_xlabel(view[0])
+    ax.set_ylabel(view[1])
+
+    if show:
+        plt.show(block=block)
+    return fig, ax
+
+
+def tensor2batch_traj(traj):
+    traj = torch.tensor(traj) if isinstance(traj, np.ndarray) else traj.cpu()
+    if traj.ndim == 2:
+        traj = traj[None, ...]
+    if not (isinstance(traj, pp.LieTensor) and traj.ltype == pp.SE3_type):
+        if traj.shape[-1] == 7:
+            traj = pp.SE3(traj)
+        else:
+            traj = pp.Exp(pp.se3(traj))
+    return traj
+
+
+def plot_trajectory_summary_2d(traj, view='xy', show=True, block=False, as_equal=False):
+    plot_dims = [view_dict[dim] for dim in [*view]]
+    traj = tensor2batch_traj(traj)
+
+    fig = plt.figure()
+    ax = fig.add_subplot()
+
+    for tau in traj:
+        _plot_position_2d(ax, tau, *plot_dims, range(traj.shape[1]), marker=False, start_marker=False, color='0.3')
+    mean_pos = traj.mean(dim=0)
+    _plot_position_2d(ax, mean_pos, *plot_dims, range(traj.shape[1]))
 
     if as_equal:
         data_length = (traj.tensor()[..., :3].view(-1, 3).max(dim=0).values -
