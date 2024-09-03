@@ -103,14 +103,22 @@ def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True,
     return fig, ax
 
 
-def _plot_position_2d(ax, traj: pp.SE3_type, dim1, dim2, indices, marker=True, line=True, start_marker=True, **kwargs):
+def _plot_position_2d(ax, traj: pp.SE3_type, dim1, dim2, indices, marker=True, line=True, start_end_marker=True,
+                      skip_final_line=False, line_kwargs=None, marker_kwargs=None):
+    if marker_kwargs is None:
+        marker_kwargs = {}
+    if line_kwargs is None:
+        line_kwargs = {}
+
     traj = traj.numpy()
-    if marker:
-        ax.scatter(traj[indices, dim1], traj[indices, dim2], marker='^', zorder=0, s=20, **kwargs)
     if line:
-        ax.plot(traj[indices, dim1], traj[indices, dim2], zorder=0.5, **kwargs)
-    if start_marker:
-        ax.scatter(traj[0, dim1], traj[0, dim2], marker='*', s=100, **kwargs)
+        line_indices = indices[:-1] if skip_final_line else indices
+        ax.plot(traj[line_indices, dim1], traj[line_indices, dim2], zorder=0.5, **line_kwargs)
+    if marker:
+        ax.scatter(traj[indices, dim1], traj[indices, dim2], marker='^', zorder=0, s=20, **marker_kwargs)
+    if start_end_marker:
+        ax.scatter(traj[0, dim1], traj[0, dim2], marker='*', color='tab:orange', s=100, **marker_kwargs)
+        ax.scatter(traj[-1, dim1], traj[-1, dim2], marker='D', color='tab:green', s=50, **marker_kwargs)
 
 
 def _plot_orientation_2d(ax, H: pp.SE3_type, dim1, dim2, indices, scale=0.05):
@@ -158,7 +166,7 @@ def plot_trajectory_2d(traj, step=1, show=True, block=True, marker=False, rot=Tr
         tail_indices = np.concatenate([left_tail, right_tail])
         plt.gca().set_prop_cycle(None)  # Reset colors to match positions
         for tau in traj:
-            _plot_position_2d(ax, tau, *plot_dims, tail_indices, marker=True, line=False, start_marker=False)
+            _plot_position_2d(ax, tau, *plot_dims, tail_indices, marker=True, line=False, start_end_marker=False)
 
     plt.gca().set_prop_cycle(None)  # Reset colors to match positions
     for tau in traj:
@@ -202,9 +210,11 @@ def plot_trajectory_summary_2d(traj, view='xy', show=True, block=False, as_equal
     ax = fig.add_subplot()
 
     for tau in traj:
-        _plot_position_2d(ax, tau, *plot_dims, range(traj.shape[1]), marker=False, start_marker=False, color='0.3')
+        _plot_position_2d(ax, tau, *plot_dims, range(traj.shape[1]), marker=False, start_end_marker=False,
+                          skip_final_line=True, line_kwargs={'color': '0.4'})
     mean_pos = traj.mean(dim=0)
-    _plot_position_2d(ax, mean_pos, *plot_dims, range(traj.shape[1]))
+    _plot_position_2d(ax, mean_pos, *plot_dims, range(traj.shape[1]), marker=False, skip_final_line=True,
+                      line_kwargs={'linewidth': 2.0})
 
     if as_equal:
         data_length = (traj.tensor()[..., :3].view(-1, 3).max(dim=0).values -
