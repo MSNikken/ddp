@@ -144,7 +144,7 @@ def _plot_orientation_2d(ax, H: pp.SE3_type, dim1, dim2, indices, scale=0.05):
 
 
 def plot_trajectory_2d(traj, step=1, show=True, block=True, marker=False, rot=True, plot_end=False, detail_ends=1,
-                    as_equal=False, view='xy'):
+                    as_equal=False, view='xy', fig=None, ax=None):
     plot_dims = [view_dict[dim] for dim in [*view]]
     traj = tensor2batch_traj(traj)
 
@@ -157,8 +157,8 @@ def plot_trajectory_2d(traj, step=1, show=True, block=True, marker=False, rot=Tr
     if plot_end and not np.mod(traj.shape[1], step) == 1:
         indices = np.append(indices, traj.shape[1]-1)
 
-    fig = plt.figure()
-    ax = fig.add_subplot()
+    fig = plt.figure() if fig is None else fig
+    ax = fig.add_subplot() if ax is None else ax
 
     if detail_ends > 1:
         left_tail = np.arange(0, np.minimum(detail_ends, traj.shape[1]))
