@@ -49,9 +49,9 @@ if __name__ == '__main__':
         # 'horizon': {
         #     'values': [8, 32, 100]
         # }
-        'train_kinematic_loss': {
-            'values': [True, False]
-        },
+        # 'train_kinematic_loss': {
+        #     'values': [True, False]
+        # },
         'condition_indices': {
             'values': [
                 [0], [0, 'random'], [0, -1], [0, 'random', -1]
