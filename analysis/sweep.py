@@ -5,7 +5,6 @@ if __name__ == '__main__':
     from scripts.train import main
     from config.locomotion_config import Config
 
-
     wandb.login()
     mode = os.environ.get("LOGGING", "online")
 
@@ -52,11 +51,24 @@ if __name__ == '__main__':
         # 'train_kinematic_loss': {
         #     'values': [True, False]
         # },
-        'condition_indices': {
+        # 'condition_indices': {
+        #     'values': [
+        #         [0], [0, 'random'], [0, -1], [0, 'random', -1]
+        #     ]
+        # }
+        'dataset': {
             'values': [
-                [0], [0, 'random'], [0, -1], [0, 'random', -1]
+                'datasets.FrankaLinesPoseObstDense3',
+                'datasets.FrankaLinesPoseObstSparse3'
             ]
-        }
+        },
+        # 'dataset_val': {
+        #     'values': [
+        #         'datasets.FrankaLinesPoseObstDense3',
+        #         'datasets.FrankaLinesPoseObstSparse3'
+        #     ]
+        # }
+
     })
     sweep_config['parameters'] = parameters_dict
     sweep_config['name'] = 'conditional_sampling'

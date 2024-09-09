@@ -262,6 +262,23 @@ class FrankaLinesPoseObstDense2:
     reward_weights = None
 
 
+class FrankaLinesPoseObstDense3:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
+    zone_dist_scale = 0.1
+    dist_reward = False
+    reward_weights = None
+
+
 class FrankaLinesPoseObstSparse2:
     method = 'chspline'
     mode = 'lines'
@@ -270,6 +287,23 @@ class FrankaLinesPoseObstSparse2:
     nr_trajectories = 30000
     nr_intervals = 2  # nr interpolated segments in a trajectory
     nr_steps = 32  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
+    zone_dist_scale = None
+    dist_reward = False
+    reward_weights = None
+
+
+class FrankaLinesPoseObstSparse3:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
     dt = None  # s
     sigma_H = None
     sigma_T = None
@@ -448,8 +482,14 @@ if __name__ == "__main__":
     # dataset = SplineDataset(config)
 
     #
-    config = BSplineTesting
+    config = FrankaLinesPoseObstSparse3
     dataset = SplineDataset(config)
+    plot_trajectory(dataset.data['observations'][:8], block=False, step=3)
+
+    config = FrankaLinesPoseObstSparse2
+    dataset = SplineDataset(config)
+    plot_trajectory(dataset.data['observations'][:8], step=3)
+
     gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
     paths, (supp, interval) = gen.generate_lines(n_traj=1, n_step=10, n_interval=3)
     fig, ax = plot_trajectory(paths, show=True, as_equal=True, block=False)
