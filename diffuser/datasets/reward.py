@@ -28,7 +28,7 @@ def reward_by_zone(H, zones: typing.List[Zone], dist_scale=None):
             mask = ((H[..., 0] > zone.xmin) & (H[..., 0] < zone.xmax) &
                     (H[..., 1] > zone.ymin) & (H[..., 1] < zone.ymax) &
                     (H[..., 2] > zone.zmin) & (H[..., 2] < zone.zmax))
-            rewards[mask] = torch.minimum(rewards[mask], torch.tensor([-1.0]))
+            rewards[mask] = torch.minimum(rewards[mask], torch.tensor([-1.0], device=H.device))
             continue
 
         dx = torch.clip(torch.maximum(zone.xmin - H[..., 0], H[..., 0] - zone.xmax), min=0)
