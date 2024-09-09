@@ -10,7 +10,7 @@ dt: 0.08
 normalizer: 'GaussianNormalizer'
 pose_only: True
 
-dataset_val: 'datasets.FrankaLinesPoseObstDense2'
+dataset_val: 'datasets.FrankaLinesPoseObstSparse2'
 val_batch_size: 64
 val_nr_batch: 2
 
