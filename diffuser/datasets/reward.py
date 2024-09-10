@@ -56,3 +56,12 @@ def kinematic_pose_consistency(H, norm=False, eps=1e-5):
         transition_length_sq = torch.linalg.vector_norm(((H_t.Inv() @ H_t_2).Log() * 0.5), dim=-1)
         consistency = consistency / (transition_length_sq + eps)
     return consistency
+
+
+def rot_from_ref(H, r_ref):
+    r_ref = pp.SO3(torch.tensor(r_ref, device=H.device, dtype=H.dtype))
+    r = pp.SO3(H[..., 3:7])
+    diff = torch.linalg.vector_norm((r_ref @ r.Inv()).Log(), dim=-1)
+    return diff
+
+

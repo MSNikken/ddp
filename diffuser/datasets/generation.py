@@ -1,7 +1,7 @@
 import numpy as np
 import torch, pypose as pp
 
-from diffuser.datasets.reward import reward_by_zone, reward_distance_to_end, Zone
+from diffuser.datasets.reward import reward_by_zone, reward_distance_to_end, Zone, rot_from_ref
 
 try:
     from ..utils.visualization import plot_trajectory
@@ -55,6 +55,7 @@ class BSplineDefault:
     zones = []
     zone_dist_scale = None
     dist_reward = False
+    ref_rot = None
     reward_weights = None
 
 
@@ -72,6 +73,7 @@ class BSplinePoseOnly:
     zones = []
     zone_dist_scale = None
     dist_reward = False
+    ref_rot = None
     reward_weights = None
 
 
@@ -89,6 +91,7 @@ class BSplineNoisyPoseOnly:
     zones = []
     zone_dist_scale = None
     dist_reward = False
+    ref_rot = None
     reward_weights = None
 
 
@@ -106,6 +109,7 @@ class BSplinePoseObstacle:
     zones = [Zone(xmin=0.45, ymin=0.45, zmin=0, xmax=0.55, ymax=0.55, zmax=1)]
     zone_dist_scale = None
     dist_reward = False
+    ref_rot = None
     reward_weights = np.array([5])
 
 
@@ -123,6 +127,7 @@ class BSplinePoseDist:
     zones = []
     zone_dist_scale = None
     dist_reward = True
+    ref_rot = None
     reward_weights = None
 
 
@@ -140,6 +145,7 @@ class BSplinePoseMixReward:
     zones = [Zone(xmin=0.45, ymin=0.45, zmin=0, xmax=0.55, ymax=0.55, zmax=1)]
     zone_dist_scale = None
     dist_reward = True
+    ref_rot = None
     reward_weights = np.array([5, 1])
 
 
@@ -157,6 +163,7 @@ class LinesPoseObst:
     zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
     zone_dist_scale = None
     dist_reward = False
+    ref_rot = None
     reward_weights = None
 
 
@@ -174,6 +181,7 @@ class LinesPoseDist:
     zones = []
     zone_dist_scale = None
     dist_reward = True
+    ref_rot = None
     reward_weights = None
 
 
@@ -191,6 +199,7 @@ class LinesPoseMixRew:
     zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
     zone_dist_scale = None
     dist_reward = True
+    ref_rot = None
     reward_weights = np.array([5, 1])
 
 
@@ -208,6 +217,7 @@ class LinesPoseObstDist:
     zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
     zone_dist_scale = None
     dist_reward = True
+    ref_rot = None
     reward_weights = None
 
 
@@ -225,6 +235,7 @@ class LinesPoseObstDense:
     zones = [Zone(xmin=0.4, ymin=0.4, zmin=0, xmax=0.6, ymax=0.6, zmax=1)]
     zone_dist_scale = 0.1
     dist_reward = False
+    ref_rot = None
     reward_weights = None
 
 
@@ -242,6 +253,7 @@ class FrankaLinesPoseObstDense:
     zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
     zone_dist_scale = 0.1
     dist_reward = False
+    ref_rot = None
     reward_weights = None
 
 
@@ -259,6 +271,7 @@ class FrankaLinesPoseObstDense2:
     zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
     zone_dist_scale = 0.1
     dist_reward = False
+    ref_rot = None
     reward_weights = None
 
 
@@ -276,6 +289,25 @@ class FrankaLinesPoseObstDense3:
     zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
     zone_dist_scale = 0.1
     dist_reward = False
+    ref_rot = None
+    reward_weights = None
+
+
+class FrankaLinesPoseObstDense4:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
+    zone_dist_scale = 0.1
+    dist_reward = False
+    ref_rot = [1.0, 0.0, 0.0, 0.0]
     reward_weights = None
 
 
@@ -293,6 +325,7 @@ class FrankaLinesPoseObstSparse2:
     zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
     zone_dist_scale = None
     dist_reward = False
+    ref_rot = None
     reward_weights = None
 
 
@@ -310,6 +343,25 @@ class FrankaLinesPoseObstSparse3:
     zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
     zone_dist_scale = None
     dist_reward = False
+    ref_rot = None
+    reward_weights = None
+
+
+class FrankaLinesPoseObstSparse4:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
+    zone_dist_scale = None
+    dist_reward = False
+    ref_rot = [1.0, 0.0, 0.0, 0.0]
     reward_weights = None
 
 
@@ -327,6 +379,7 @@ class BSplineTesting:
     zones = [Zone(xmin=0, ymin=0, zmin=0, xmax=0.5, ymax=0.5, zmax=0.5), Zone(xmin=0, ymin=0, zmin=0, xmax=0.4, ymax=0.4, zmax=0.4)]
     zone_dist_scale = 0.5
     dist_reward = True
+    ref_rot = None
     reward_weights = np.array([100, 1])
 
 
@@ -371,9 +424,8 @@ class SplineGenerator(object):
         x = end_points[:, 0:1] + diff.repeat((1, n_points, 1)) * progression[:, None]
 
         # Rotation interpolated with chspline, since bspline is not supported for SO(3)
-        support_r = torch.randn((n_traj, n_support, 3))
-        support_r = pp.so3(2 * torch.pi * torch.rand((n_traj, n_support, 1)) *
-                           support_r / torch.norm(support_r, dim=2, keepdim=True)).Exp()
+        support_r = torch.rand((n_traj, n_support, 4))*2-1
+        support_r = pp.SO3(support_r / torch.norm(support_r, dim=-1, keepdim=True))
         r = pp.SO3(pp.chspline(support_r, 1/n_step))
         return pp.SE3(torch.cat([x, r.tensor()], dim=-1)), (support_r, 1/n_step)
 
@@ -394,6 +446,7 @@ class SplineDataset(object):
         self.obstacles = config.zones
         self.obst_dist_scale = config.zone_dist_scale
         self.dist_reward = config.dist_reward
+        self.ref_rot = config.ref_rot
         self.reward_weights = config.reward_weights
         self.data = self.generate()
 
@@ -432,6 +485,8 @@ class SplineDataset(object):
             rewards.append(reward_by_zone(paths, self.obstacles, dist_scale=self.obst_dist_scale))
         if self.dist_reward:
             rewards.append(reward_distance_to_end(paths, self.config.xmin, self.config.xmax))
+        if self.ref_rot is not None:
+            rewards.append(rot_from_ref(paths, self.ref_rot))
 
         if len(rewards) == 0:
             rewards = torch.zeros((*paths.shape[:-1], 1), device=paths.device)
@@ -482,7 +537,7 @@ if __name__ == "__main__":
     # dataset = SplineDataset(config)
 
     #
-    config = FrankaLinesPoseObstSparse3
+    config = FrankaLinesPoseObstSparse4
     dataset = SplineDataset(config)
     plot_trajectory(dataset.data['observations'][:8], block=False, step=3)
 
