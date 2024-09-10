@@ -3,14 +3,14 @@
 #preprocess_fns: ['only_trajectory','joints_to_cart','cart_to_se3']
 
 loader: 'datasets.GeneratedDataset'
-dataset: 'datasets.FrankaLinesPoseObstSparse3'
+dataset: 'datasets.FrankaLinesPoseObstSparse4'
 max_n_episodes: 30000
 returns_scale: 100.0
 dt: 0.08
 normalizer: 'GaussianNormalizer'
 pose_only: True
 
-dataset_val: 'datasets.FrankaLinesPoseObstSparse3'
+dataset_val: 'datasets.FrankaLinesPoseObstSparse4'
 val_batch_size: 64
 val_nr_batch: 2
 
@@ -31,7 +31,7 @@ save_freq: 50000
 
 loss_type: 'state_l2'
 train_data_loss: True
-inference_returns: -0.01
+inference_returns: [-0.01, 0.0]
 inference_horizon: 100
 
 train_kinematic_loss: False

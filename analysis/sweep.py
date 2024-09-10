@@ -58,8 +58,8 @@ if __name__ == '__main__':
         # }
         'dataset': {
             'values': [
-                'datasets.FrankaLinesPoseObstDense3',
-                'datasets.FrankaLinesPoseObstSparse3'
+                'datasets.FrankaLinesPoseObstDense4',
+                'datasets.FrankaLinesPoseObstSparse4'
             ]
         },
         # 'dataset_val': {
