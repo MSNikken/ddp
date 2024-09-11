@@ -56,6 +56,8 @@ class BSplineDefault:
     zone_dist_scale = None
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -74,6 +76,8 @@ class BSplinePoseOnly:
     zone_dist_scale = None
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -92,6 +96,8 @@ class BSplineNoisyPoseOnly:
     zone_dist_scale = None
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -110,6 +116,8 @@ class BSplinePoseObstacle:
     zone_dist_scale = None
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = np.array([5])
 
 
@@ -128,6 +136,8 @@ class BSplinePoseDist:
     zone_dist_scale = None
     dist_reward = True
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -146,6 +156,8 @@ class BSplinePoseMixReward:
     zone_dist_scale = None
     dist_reward = True
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = np.array([5, 1])
 
 
@@ -164,6 +176,8 @@ class LinesPoseObst:
     zone_dist_scale = None
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -182,6 +196,8 @@ class LinesPoseDist:
     zone_dist_scale = None
     dist_reward = True
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -200,6 +216,8 @@ class LinesPoseMixRew:
     zone_dist_scale = None
     dist_reward = True
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = np.array([5, 1])
 
 
@@ -218,6 +236,8 @@ class LinesPoseObstDist:
     zone_dist_scale = None
     dist_reward = True
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -236,6 +256,8 @@ class LinesPoseObstDense:
     zone_dist_scale = 0.1
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -254,6 +276,8 @@ class FrankaLinesPoseObstDense:
     zone_dist_scale = 0.1
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -272,6 +296,8 @@ class FrankaLinesPoseObstDense2:
     zone_dist_scale = 0.1
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -290,6 +316,8 @@ class FrankaLinesPoseObstDense3:
     zone_dist_scale = 0.1
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -308,6 +336,28 @@ class FrankaLinesPoseObstDense4:
     zone_dist_scale = 0.1
     dist_reward = False
     ref_rot = [1.0, 0.0, 0.0, 0.0]
+    rot_bias = None
+    rot_bias_factor = None
+    reward_weights = None
+
+
+class FrankaLinesPoseObstDense5:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
+    zone_dist_scale = 0.1
+    dist_reward = False
+    ref_rot = None
+    rot_bias = [1.0, 0.0, 0.0, 0.0]
+    rot_bias_factor = 0.75
     reward_weights = None
 
 
@@ -326,6 +376,8 @@ class FrankaLinesPoseObstSparse2:
     zone_dist_scale = None
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -344,6 +396,8 @@ class FrankaLinesPoseObstSparse3:
     zone_dist_scale = None
     dist_reward = False
     ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
     reward_weights = None
 
 
@@ -362,6 +416,28 @@ class FrankaLinesPoseObstSparse4:
     zone_dist_scale = None
     dist_reward = False
     ref_rot = [1.0, 0.0, 0.0, 0.0]
+    rot_bias = None
+    rot_bias_factor = None
+    reward_weights = None
+
+
+class FrankaLinesPoseObstSparse5:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
+    zone_dist_scale = None
+    dist_reward = False
+    ref_rot = None
+    rot_bias = [1.0, 0.0, 0.0, 0.0]
+    rot_bias_factor = 0.75
     reward_weights = None
 
 
@@ -380,7 +456,19 @@ class BSplineTesting:
     zone_dist_scale = 0.5
     dist_reward = True
     ref_rot = None
+    rot_bias = [1, 0, 0, 0]
+    rot_bias_factor = 0.5
     reward_weights = np.array([100, 1])
+
+
+def create_orientation_support(n_traj, n_support, bias=None, bias_factor=0.5):
+    support_r = torch.rand((n_traj, n_support, 4)) * 2 - 1
+    support_r = pp.SO3(support_r / torch.norm(support_r, dim=-1, keepdim=True))
+    if bias is None:
+        return support_r
+    bias = pp.SO3(bias)
+    support_r = bias @ ((bias.Inv() @ support_r).Log() * (1 - bias_factor * torch.rand(n_traj, n_support, 1))).Exp()
+    return support_r
 
 
 class SplineGenerator(object):
@@ -397,21 +485,19 @@ class SplineGenerator(object):
         return H
 
     @torch.no_grad()
-    def generate_random(self, n_traj=1, n_step=10, n_interval=1):
+    def generate_random(self, n_traj=1, n_step=10, n_interval=1, **kwargs):
         assert n_interval >= 1
         n_support = n_interval + 1 if self.interpolator is pp.chspline else n_interval + 3
         interval = 1/n_step
 
         support_x = torch.rand((n_traj, n_support, 3)) * (self.xmax - self.xmin) + self.xmin
         # Generate random Gaussian vector to sample uniform directions, scale rotation uniformly [0, 2pi]
-        support_r = torch.randn((n_traj, n_support, 3))
-        support_r = pp.so3(2 * torch.pi * torch.rand((n_traj, n_support, 1)) *
-                           support_r / torch.norm(support_r, dim=2, keepdim=True)).Exp()
+        support_r = create_orientation_support(n_traj, n_support, **kwargs)
         support = pp.SE3(torch.cat((support_x, support_r.tensor()), dim=2))
         return self.generate_from_support(support, interval=interval), (support, interval)
 
     @torch.no_grad()
-    def generate_lines(self, n_traj=1, n_step=10, n_interval=1):
+    def generate_lines(self, n_traj=1, n_step=10, n_interval=1, **kwargs):
         # Rotation interpolated with chspline, since bspline is not supported for SO(3)
         n_support = n_interval + 1
         n_points = n_step*n_interval + 1
@@ -424,8 +510,7 @@ class SplineGenerator(object):
         x = end_points[:, 0:1] + diff.repeat((1, n_points, 1)) * progression[:, None]
 
         # Rotation interpolated with chspline, since bspline is not supported for SO(3)
-        support_r = torch.rand((n_traj, n_support, 4))*2-1
-        support_r = pp.SO3(support_r / torch.norm(support_r, dim=-1, keepdim=True))
+        support_r = create_orientation_support(n_traj, n_support, **kwargs)
         r = pp.SO3(pp.chspline(support_r, 1/n_step))
         return pp.SE3(torch.cat([x, r.tensor()], dim=-1)), (support_r, 1/n_step)
 
@@ -447,16 +532,20 @@ class SplineDataset(object):
         self.obst_dist_scale = config.zone_dist_scale
         self.dist_reward = config.dist_reward
         self.ref_rot = config.ref_rot
+        self.rot_bias = config.rot_bias
+        self.rot_bias_factor = config.rot_bias_factor
         self.reward_weights = config.reward_weights
         self.data = self.generate()
 
     def generate(self):
         if self.mode == 'random':
             path, _ = self.splines.generate_random(n_traj=self.nr_trajectories,
-                                                   n_step=self.nr_steps, n_interval=self.nr_intervals)
+                                                   n_step=self.nr_steps, n_interval=self.nr_intervals,
+                                                   bias=self.rot_bias, bias_factor=self.rot_bias_factor)
         elif self.mode == 'lines':
             path, _ = self.splines.generate_lines(n_traj=self.nr_trajectories,
-                                                  n_step=self.nr_steps, n_interval=self.nr_intervals)
+                                                  n_step=self.nr_steps, n_interval=self.nr_intervals,
+                                                  bias=self.rot_bias, bias_factor=self.rot_bias_factor)
 
         observations = path.Log().tensor() if self.repres == 'se3' else path.tensor()
 
@@ -522,8 +611,8 @@ if __name__ == "__main__":
     # plt.ylabel('Density')
     # plt.show()
 
-    gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
-    paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
+    # gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
+    # paths, (supp, interval) = gen.generate_random(n_traj=2, n_step=10, n_interval=3)
     # delta_t = 0.1
     # twists = approx_instant_twist(paths, delta_t)
     # x = torch.cat([paths.Log(), twists], dim=-1)
@@ -537,16 +626,16 @@ if __name__ == "__main__":
     # dataset = SplineDataset(config)
 
     #
-    config = FrankaLinesPoseObstSparse4
-    dataset = SplineDataset(config)
-    plot_trajectory(dataset.data['observations'][:8], block=False, step=3)
+    # config = BSplineTesting
+    # dataset = SplineDataset(config)
+    # plot_trajectory(dataset.data['observations'][:8], block=False, step=3)
 
-    config = FrankaLinesPoseObstSparse2
-    dataset = SplineDataset(config)
-    plot_trajectory(dataset.data['observations'][:8], step=3)
+    # config = FrankaLinesPoseObstSparse2
+    # dataset = SplineDataset(config)
+    # plot_trajectory(dataset.data['observations'][:8], step=3)
 
     gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
-    paths, (supp, interval) = gen.generate_lines(n_traj=1, n_step=10, n_interval=3)
+    paths, (supp, interval) = gen.generate_lines(n_traj=10, n_step=10, n_interval=1, bias=[1, 0, 0, 0], bias_factor=0.99)
     fig, ax = plot_trajectory(paths, show=True, as_equal=True, block=False)
     ax.set_title('Paths')
     # ax.set_xlim(0, 1)
