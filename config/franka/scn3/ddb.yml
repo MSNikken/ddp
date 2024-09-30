@@ -5,12 +5,12 @@
 loader: 'datasets.GeneratedDataset'
 dataset: 'datasets.FrankaScn3LinesPoseObstDense'
 max_n_episodes: 30000
-returns_scale: 100.0
+returns_scale: 27.5
 dt: 0.08
 normalizer: 'GaussianNormalizer'
 pose_only: True
 
-dataset_val: 'FrankaScn3LinesPoseObstDense'
+dataset_val: 'datasets.FrankaScn3LinesPoseObstDense'
 val_batch_size: 64
 val_nr_batch: 2
 
