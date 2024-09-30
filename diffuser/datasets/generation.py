@@ -441,6 +441,94 @@ class FrankaLinesPoseObstSparse5:
     reward_weights = None
 
 
+class FrankaScn2LinesPoseObstDense:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [
+        Zone(xmin=0.3, ymin=-0.15, zmin=0.3, xmax=0.41, ymax=-0.05, zmax=0.6),
+        Zone(xmin=0.39, ymin=0.05, zmin=0.3, xmax=0.5, ymax=0.15, zmax=0.6)]
+    zone_dist_scale = 0.1
+    dist_reward = False
+    ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
+    reward_weights = None
+
+
+class FrankaScn2LinesPoseObstSparse:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [
+        Zone(xmin=0.3, ymin=-0.15, zmin=0.3, xmax=0.41, ymax=-0.05, zmax=0.6),
+        Zone(xmin=0.39, ymin=0.05, zmin=0.3, xmax=0.5, ymax=0.15, zmax=0.6)]
+    zone_dist_scale = None
+    dist_reward = False
+    ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
+    reward_weights = None
+
+
+class FrankaScn3LinesPoseObstDense:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [
+        Zone(xmin=0.3, ymin=0.0, zmin=0.3, xmax=0.5, ymax=0.25, zmax=0.4),
+        Zone(xmin=0.3, ymin=-0.05, zmin=0.3, xmax=0.4, ymax=0.05, zmax=0.6)]
+    zone_dist_scale = 0.1
+    dist_reward = False
+    ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
+    reward_weights = None
+
+
+class FrankaScn3LinesPoseObstSparse:
+    method = 'chspline'
+    mode = 'lines'
+    xmin = np.array([0.3, -0.25, 0.3])
+    xmax = np.array([0.5, 0.25, 0.6])
+    nr_trajectories = 30000
+    nr_intervals = 1  # nr interpolated segments in a trajectory
+    nr_steps = 64  # interpolation steps per trajectory segment
+    dt = None  # s
+    sigma_H = None
+    sigma_T = None
+    zones = [
+        Zone(xmin=0.3, ymin=0.0, zmin=0.3, xmax=0.5, ymax=0.25, zmax=0.4),
+        Zone(xmin=0.3, ymin=-0.05, zmin=0.3, xmax=0.4, ymax=0.05, zmax=0.6)]
+    zone_dist_scale = None
+    dist_reward = False
+    ref_rot = None
+    rot_bias = None
+    rot_bias_factor = None
+    reward_weights = None
+
+
 class BSplineTesting:
     method = 'bspline'
     mode = 'lines'
@@ -634,10 +722,14 @@ if __name__ == "__main__":
     # dataset = SplineDataset(config)
     # plot_trajectory(dataset.data['observations'][:8], step=3)
 
-    gen = SplineGenerator(xmin=np.array([0, 0, 0]), xmax=np.array([1, 1, 1]), method='bs')
-    paths, (supp, interval) = gen.generate_lines(n_traj=10, n_step=10, n_interval=1, bias=[1, 0, 0, 0], bias_factor=0.99)
-    fig, ax = plot_trajectory(paths, show=True, as_equal=True, block=False)
-    ax.set_title('Paths')
+    gen = SplineGenerator(xmin=np.array([0.3, -0.25, 0.3]), xmax=np.array([0.5, 0.25, 0.6]), method='bs')
+    for i in range(10):
+        paths, (supp, interval) = gen.generate_lines(n_traj=4, n_step=16, n_interval=1)
+        fig, ax = plot_trajectory(paths, show=True, as_equal=True, start_marker=False, block=False)
+        ax.set_title('Reference paths')
+        ax.set_xlabel('x (m)')
+        ax.set_ylabel('y (m)')
+        ax.set_zlabel('z (m)')
     # ax.set_xlim(0, 1)
     # ax.set_ylim(0, 1)
     fig.show()
