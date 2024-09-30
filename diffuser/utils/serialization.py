@@ -258,7 +258,7 @@ def load_diffusion_from_config(config, loadpath):
     diffusion = load_diffuser_config(config, obs_dim, act_dim)(model, normalizer=normalizer)
     trainer = load_trainer_config(config)(diffusion, dataset, renderer, dataset['val'])
 
-    state = torch.load(loadpath)
+    state = torch.load(loadpath, map_location=torch.device(config.device))
     diffusion.load_state_dict(state['model'])
     trainer.ema_model.load_state_dict(state['ema'])
     trainer.step = state['step']
