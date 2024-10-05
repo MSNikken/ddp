@@ -1,4 +1,5 @@
 import os
+from functools import partial
 
 import numpy as np
 import torch
@@ -7,18 +8,19 @@ from matplotlib import pyplot as plt
 
 from diffuser import utils
 from diffuser.datasets import Zone
-from diffuser.datasets.reward import discounted_trajectory_rewards
+from diffuser.datasets.reward import discounted_trajectory_rewards, cost_collision, cost_ee
 from diffuser.experiments.samples import inpaint_scenarios
+from diffuser.models.guide import CostComposite, GuideManagerTrajectories
 from diffuser.utils import plot_trajectory, plot_trajectory_2d, draw_rectangles, plot_trajectory_summary_2d
 
-#runpath = 'dl_rob/diffusion/l9z7ryr8' sleek donkey
-#runpath = 'dl_rob/diffusion/vvnf5fm3'  # rich sweep 1
-#runpath = 'dl_rob/diffusion/fkfi36xg'  # comic totem 196 (hor32, 0,randcond)
-#runpath = 'dl_rob/diffusion/2dr0kadq'  # sleek surf (comic + kin)
-#runpath = 'dl_rob/diffusion/h0f1ywab'  # skilled violet (comic + dense)
-#runpath = 'dl_rob/diffusion/gcf9cf3d'  # bright dawn (comic + dense + kin)
+# runpath = 'dl_rob/diffusion/l9z7ryr8' sleek donkey
+# runpath = 'dl_rob/diffusion/vvnf5fm3'  # rich sweep 1
+# runpath = 'dl_rob/diffusion/fkfi36xg'  # comic totem 196 (hor32, 0,randcond)
+# runpath = 'dl_rob/diffusion/2dr0kadq'  # sleek surf (comic + kin)
+# runpath = 'dl_rob/diffusion/h0f1ywab'  # skilled violet (comic + dense)
+# runpath = 'dl_rob/diffusion/gcf9cf3d'  # bright dawn (comic + dense + kin)
 
-#runpath = 'dl_rob/diffusion/lz32b97k' # electric field (kdbr)
+# runpath = 'dl_rob/diffusion/lz32b97k' # electric field (kdbr)
 
 runpaths = {
     'ddb': 'dl_rob/diffusion/i2ff19p3',
@@ -48,8 +50,7 @@ runpaths = {
     'scn3_dense': 'dl_rob/diffusion/s9qxlvqh',
     'scn3_sparse': 'dl_rob/diffusion/rczqxeiz',
 }
-runpath = runpaths['scn3_sparse']
-
+runpath = runpaths['scn2_dense']
 
 # Retrieve configuration
 api = wandb.Api()
@@ -62,11 +63,11 @@ state_file = wandb.restore('checkpoint/state.pt', run_path=runpath)
 state_dict = torch.load(state_file.name)
 ema_dict = state_dict['ema']
 
-
 if __name__ == "__main__":
     from config.locomotion_config import Config
+
     Config._update(wb_config)
-    #Config._update({'condition_guidance_w': 1.2})   # 1.2 default
+    # Config._update({'condition_guidance_w': 1.2})   # 1.2 default
     pt_file = state_file.name
     print(f'Retrieving parameters from: {pt_file}')
     experiment = utils.serialization.load_diffusion_from_config(Config, pt_file)
@@ -82,23 +83,23 @@ if __name__ == "__main__":
     # view = 'xy'
 
     # Franka obstacle
-    #scns = ['fr_be_straight', 'fr_be_short', 'fr_be_short2', 'fr_bm_straight', 'fr_be_straight2', 'fr_be_straight3']
-    #scns = ['fr_be_short', 'fr_be_short2', 'fr_be_short3', 'fr_be_short4', 'fr_be_short5']
-    #scns = ['fr_be_straight', 'fr_be_straight2', 'fr_be_straight3', 'fr_be_straight4']
-    #scns = ['fr_bm_straight', 'fr_bm_straight2']
-    #scns = ['fr_be_short', 'fr_be_longer']
-    #scns = ['fr_be_parallel']
-    #scns = ['fr_b']
-    #scns = ['fr_be_straight', 'fr_be_straight4']
-    #scns = ['fr_curve']
+    # scns = ['fr_be_straight', 'fr_be_short', 'fr_be_short2', 'fr_bm_straight', 'fr_be_straight2', 'fr_be_straight3']
+    # scns = ['fr_be_short', 'fr_be_short2', 'fr_be_short3', 'fr_be_short4', 'fr_be_short5']
+    # scns = ['fr_be_straight', 'fr_be_straight2', 'fr_be_straight3', 'fr_be_straight4']
+    # scns = ['fr_bm_straight', 'fr_bm_straight2']
+    # scns = ['fr_be_short', 'fr_be_longer']
+    # scns = ['fr_be_parallel']
+    # scns = ['fr_b']
+    # scns = ['fr_be_straight', 'fr_be_straight4']
+    # scns = ['fr_curve']
 
     xlim = (0.3, 0.5)
     ylim = (-0.25, 0.25)
     zlim = (0.3, 0.6)
 
     #scns = ['scn2_1', 'scn2_2', 'scn2_3', 'scn2_4']
-    scns = ['scn3_1', 'scn3_2']
-
+    # scns = ['scn3_1', 'scn3_2']
+    scns = ['scn2_1']
     # Scenarios:
     obstacles1 = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
     views1 = ['yz']
@@ -120,11 +121,18 @@ if __name__ == "__main__":
     scn_rectangles3 = [[[obst.xmin, obst.ymin, obst.xmax, obst.ymax] for obst in obstacles3],
                        [[obst.ymin, obst.zmin, obst.ymax, obst.zmax] for obst in obstacles3]]
 
-    obstacles = obstacles3
-    scn_rectangles = scn_rectangles3
-    views = views3
-    lims = lims3
+    obstacles = obstacles2
+    scn_rectangles = scn_rectangles2
+    views = views2
+    lims = lims2
 
+    # guide
+    # end effector costs are added when goal pose is known
+    costs = [CostComposite([partial(cost_collision, obstacles), cost_ee], weights=[1e-1, 1e-2]) for scn in scns]
+    #costs = [CostComposite([cost_ee], weights=[1e-2]) for scn in scns]
+    #costs = [CostComposite([partial(cost_collision, obstacles)], weights=[1e-1]) for scn in scns]
+    guides = [GuideManagerTrajectories(cost, dataset.normalizer, clip_grad=True) for cost in costs]
+    # guides = None
 
     # plotting
     step = 1
@@ -134,7 +142,7 @@ if __name__ == "__main__":
     # diffusion
     n_samples = 30
     horizon = [128]
-    inference_returns = [0]
+    inference_returns = [-0.5, -0.4, -0.3, -0.2, -0.1]
 
     if grid:
         figs = [plt.figure() for i in range(len(scns))]
@@ -142,12 +150,13 @@ if __name__ == "__main__":
         for i_ret, ret in enumerate(inference_returns):
             # List of tuple of (final, whole diffusion)
             diff = inpaint_scenarios(diff_model, dataset, hor, scns, device, n_samples=n_samples,
-                                     inference_returns=ret, return_diff=True, unnorm=True)
+                                     inference_returns=ret, return_diff=True, unnorm=True, guides=guides)
             for i_scn, (scn, scn_name) in enumerate(zip(diff, scns)):
                 # Metrics
                 rew = discounted_trajectory_rewards(torch.tensor(scn[0]), obstacles, discount=0.99, kin_rel_weight=0)
                 collision = discounted_trajectory_rewards(torch.tensor(scn[0]), obstacles, discount=1, kin_rel_weight=0)
-                kin_score = discounted_trajectory_rewards(torch.tensor(scn[0]), [], discount=1, kin_rel_weight=1, kin_l1=True)
+                kin_score = discounted_trajectory_rewards(torch.tensor(scn[0]), [], discount=1, kin_rel_weight=1,
+                                                          kin_l1=True)
                 collision_free = (collision == 0).sum()
                 kin_score_mean = kin_score.mean()
                 dist_to_end = np.linalg.norm(scn[0][:, -1, :3] - scn[0][:, -2, :3], axis=-1)
@@ -162,8 +171,8 @@ if __name__ == "__main__":
                 # Plotting
                 for i in [199]:
                     traj = scn[1][0, i]
-                    #plot_trajectory(traj, block=False, as_equal=True, step=step)
-                    #fig, ax = plot_trajectory_2d(traj, view=view, block=False, as_equal=True, step=step)
+                    # plot_trajectory(traj, block=False, as_equal=True, step=step)
+                    # fig, ax = plot_trajectory_2d(traj, view=view, block=False, as_equal=True, step=step)
                     # draw_rectangles(ax, rectangles)
                     # ax.set_xlim(*xlim)
                     # ax.set_ylim(*ylim)
@@ -176,19 +185,22 @@ if __name__ == "__main__":
                 for view, rectangles, lim in zip(views, scn_rectangles, lims):
                     if grid:
                         fig = figs[i_scn]
-                        ax = fig.add_subplot(len(horizon), len(inference_returns), i_hor*len(inference_returns) + i_ret+1)
-                        ax = plot_trajectory_summary_2d(paths, view=view, block=False, as_equal=True, labels=False, ax=ax)
+                        ax = fig.add_subplot(len(horizon), len(inference_returns),
+                                             i_hor * len(inference_returns) + i_ret + 1)
+                        ax = plot_trajectory_summary_2d(paths, view=view, block=False, as_equal=True, labels=False,
+                                                        ax=ax)
                         ax.set_xlabel('')
                         ax.set_ylabel('')
-                        if i_hor == len(horizon)-1:
+                        if i_hor == len(horizon) - 1:
                             ax.set_xlabel('y (m)')
                         if i_ret == 0:
                             ax.set_ylabel('z (m)')
                     else:
                         fig = plt.figure()
                         ax = fig.subplots()
-                        ax = plot_trajectory_summary_2d(paths, view=view, block=False, as_equal=True, labels=True, ax=ax)
-                        #ax.set_title('Sampling with sparse rewards')
+                        ax = plot_trajectory_summary_2d(paths, view=view, block=False, as_equal=True, labels=True,
+                                                        ax=ax)
+                        # ax.set_title('Sampling with sparse rewards')
                         ax.legend()
                         ax.set_xlabel('y (m)')
                         ax.set_ylabel('z (m)')

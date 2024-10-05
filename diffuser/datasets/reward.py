@@ -44,6 +44,29 @@ def reward_distance_to_end(H, xmin, xmax):
         xmax - xmin)) ** 2
 
 
+def cost_ee(goal, x, **kwargs):
+    pos = x[:, :, :3]
+    rot = pp.SO3(x[:, :, 3:7])
+
+    goal_pos = goal[..., :3]
+    goal_rot = pp.SO3(goal[..., 3:7])
+
+    pos_cost = torch.linalg.vector_norm(pos-goal_pos, dim=-1)**2
+    rot_cost = torch.linalg.vector_norm((rot.Inv() @ goal_rot).Log(), dim=-1)
+    return torch.sum(pos_cost + rot_cost, dim=-1)
+
+
+def cost_collision(obsts, x, **kwargs):
+    costs = torch.zeros(x.shape[:-1], device=x.device, dtype=x.dtype)
+    for obst in obsts:
+        dx = torch.clip(torch.minimum(x[..., 0] - obst.xmin, obst.xmax - x[..., 0]), min=0)
+        dy = torch.clip(torch.minimum(x[..., 1] - obst.ymin, obst.ymax - x[..., 1]), min=0)
+        dz = torch.clip(torch.minimum(x[..., 2] - obst.zmin, obst.zmax - x[..., 2]), min=0)
+        dist = torch.min(torch.stack([dx, dy, dz]), dim=0)[0]
+        costs = torch.maximum(costs, dist)
+    return torch.sum(costs, dim=-1)
+
+
 def kinematic_pose_consistency(H, norm=False, eps=1e-5):
     H_t = pp.SE3(H[..., :-2, :7])
     H_t_1 = pp.SE3(H[..., 1:-1, :7])
