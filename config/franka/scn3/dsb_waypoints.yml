@@ -15,7 +15,7 @@ val_batch_size: 64
 val_nr_batch: 2
 
 # Model
-diffusion: 'models.FrankaScn3LinesPoseWaypointsObstSparse'
+diffusion: 'models.GaussianInvDynDiffusion'
 returns_condition: True
 horizon: 32
 clip_denoised: False
