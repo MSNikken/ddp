@@ -447,16 +447,19 @@ class GaussianInvDynDiffusion(nn.Module):
         return model_mean, posterior_variance, posterior_log_variance
 
     @torch.no_grad()
-    def p_sample(self, x, cond, t, returns=None):
+    def p_sample(self, x, cond, t, returns=None, guide=None):
         b, *_, device = *x.shape, x.device
         model_mean, _, model_log_variance = self.p_mean_variance(x=x, cond=cond, t=t, returns=returns)
+        if guide is not None:
+            model_mean += guide(x)
+
         noise = 0.5*torch.randn_like(x)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @torch.no_grad()
-    def p_sample_loop(self, shape, cond, returns=None, verbose=True, return_diffusion=False):
+    def p_sample_loop(self, shape, cond, returns=None, verbose=True, return_diffusion=False, guide=None):
         device = self.betas.device
 
         batch_size = shape[0]
@@ -468,7 +471,7 @@ class GaussianInvDynDiffusion(nn.Module):
         progress = utils.Progress(self.n_diffsteps) if verbose else utils.Silent()
         for i in reversed(range(0, self.n_diffsteps)):
             timesteps = torch.full((batch_size,), i, device=device, dtype=torch.long)
-            x = self.p_sample(x, cond, timesteps, returns)
+            x = self.p_sample(x, cond, timesteps, returns, guide=guide)
             x = apply_conditioning(x, cond, 0)
 
             progress.update({'t': i})

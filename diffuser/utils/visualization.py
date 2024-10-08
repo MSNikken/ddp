@@ -48,7 +48,7 @@ def _plot_orientation(ax, H: pp.SE3_type, indices, scale=0.05):
         ax.plot([origin[i, 0], z_vec[i, 0]], [origin[i, 1], z_vec[i, 1]], [origin[i, 2], z_vec[i, 2]], c='b')
 
 
-def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True, plot_end=False, detail_ends=1,
+def plot_trajectory(traj, step=1, show=True, block=True, marker=False, start_marker=True, rot=True, plot_end=False, detail_ends=1,
                     as_equal=False):
     traj = torch.tensor(traj) if isinstance(traj, np.ndarray) else traj.cpu()
     if traj.ndim == 2:
@@ -82,7 +82,7 @@ def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True,
 
     plt.gca().set_prop_cycle(None)  # Reset colors to match positions
     for tau in traj:
-        _plot_position(ax, tau, indices, marker)
+        _plot_position(ax, tau, indices, marker, start_marker=start_marker)
         if rot:
             _plot_orientation(ax, tau, indices, scale=scale)
 
@@ -104,7 +104,7 @@ def plot_trajectory(traj, step=1, show=True, block=True, marker=False, rot=True,
 
 
 def _plot_position_2d(ax, traj: pp.SE3_type, dim1, dim2, indices, marker=True, line=True, start_end_marker=True,
-                      skip_final_line=False, line_kwargs=None, marker_kwargs=None):
+                      skip_final_line=False, line_kwargs=None, marker_kwargs=None, start_end_label=False):
     if marker_kwargs is None:
         marker_kwargs = {}
     if line_kwargs is None:
@@ -117,8 +117,13 @@ def _plot_position_2d(ax, traj: pp.SE3_type, dim1, dim2, indices, marker=True, l
     if marker:
         ax.scatter(traj[indices, dim1], traj[indices, dim2], marker='^', zorder=0, s=20, **marker_kwargs)
     if start_end_marker:
-        ax.scatter(traj[0, dim1], traj[0, dim2], marker='*', color='tab:orange', s=100, **marker_kwargs)
-        ax.scatter(traj[-1, dim1], traj[-1, dim2], marker='D', color='tab:green', s=50, **marker_kwargs)
+        start_marker_kwargs = marker_kwargs.copy()
+        end_marker_kwargs = marker_kwargs.copy()
+        if start_end_label:
+            start_marker_kwargs['label'] = 'start'
+            end_marker_kwargs['label'] = 'goal'
+        ax.scatter(traj[0, dim1], traj[0, dim2], marker='*', color='tab:orange', s=100, **start_marker_kwargs)
+        ax.scatter(traj[-1, dim1], traj[-1, dim2], marker='D', color='tab:green', s=50, **end_marker_kwargs)
 
 
 def _plot_orientation_2d(ax, H: pp.SE3_type, dim1, dim2, indices, scale=0.05):
@@ -144,7 +149,7 @@ def _plot_orientation_2d(ax, H: pp.SE3_type, dim1, dim2, indices, scale=0.05):
 
 
 def plot_trajectory_2d(traj, step=1, show=True, block=True, marker=False, rot=True, plot_end=False, detail_ends=1,
-                    as_equal=False, view='xy', fig=None, ax=None):
+                    as_equal=False, view='xy', fig=None, ax=None, labels=False):
     plot_dims = [view_dict[dim] for dim in [*view]]
     traj = tensor2batch_traj(traj)
 
@@ -166,7 +171,8 @@ def plot_trajectory_2d(traj, step=1, show=True, block=True, marker=False, rot=Tr
         tail_indices = np.concatenate([left_tail, right_tail])
         plt.gca().set_prop_cycle(None)  # Reset colors to match positions
         for tau in traj:
-            _plot_position_2d(ax, tau, *plot_dims, tail_indices, marker=True, line=False, start_end_marker=False)
+            _plot_position_2d(ax, tau, *plot_dims, tail_indices, marker=True, line=False, start_end_marker=False,
+                              start_end_label=labels)
 
     plt.gca().set_prop_cycle(None)  # Reset colors to match positions
     for tau in traj:
@@ -202,19 +208,18 @@ def tensor2batch_traj(traj):
     return traj
 
 
-def plot_trajectory_summary_2d(traj, view='xy', show=True, block=False, as_equal=False):
+def plot_trajectory_summary_2d(traj, view='xy', show=True, block=False, as_equal=False, labels=False, ax=None):
     plot_dims = [view_dict[dim] for dim in [*view]]
     traj = tensor2batch_traj(traj)
 
-    fig = plt.figure()
-    ax = fig.add_subplot()
+    ax = ax or plt.gca()
 
     for tau in traj:
         _plot_position_2d(ax, tau, *plot_dims, range(traj.shape[1]), marker=False, start_end_marker=False,
                           skip_final_line=True, line_kwargs={'color': '0.4'})
     mean_pos = traj.mean(dim=0)
     _plot_position_2d(ax, mean_pos, *plot_dims, range(traj.shape[1]), marker=False, skip_final_line=True,
-                      line_kwargs={'linewidth': 2.0})
+                      line_kwargs={'linewidth': 2.0, 'label': 'mean'}, start_end_label=labels)
 
     if as_equal:
         data_length = (traj.tensor()[..., :3].view(-1, 3).max(dim=0).values -
@@ -229,7 +234,7 @@ def plot_trajectory_summary_2d(traj, view='xy', show=True, block=False, as_equal
 
     if show:
         plt.show(block=block)
-    return fig, ax
+    return ax
 
 
 def draw_rectangles(ax, rects, facecolor='r', edgecolor='none', alpha=0.5):
