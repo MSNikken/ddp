@@ -585,7 +585,7 @@ class FrankaScn1LinesPoseWaypointsObstSparse:
     sigma_H = None
     sigma_T = None
     zones = [Zone(xmin=0.3, ymin=-0.1, zmin=0.3, xmax=0.5, ymax=0.1, zmax=0.45)]
-    zone_dist_scale = 0.1
+    zone_dist_scale = None
     dist_reward = False
     ref_rot = None
     rot_bias = None
