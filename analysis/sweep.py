@@ -24,50 +24,12 @@ if __name__ == '__main__':
     parameters_dict = {k: {'value': v} for k, v in parameters_dict.items()}
     # # Select parameters to sweep
     parameters_dict.update({
-        # 'kinematic_scale': {
-        #     'distribution': 'q_log_uniform_values',
-        #     'max': 1001,
-        #     'min': 0.1,
-        #     'q': 10
-        # },
-        # 'max_kin_weight': {
-        #     'distribution': 'q_log_uniform_values',
-        #     'max': 10000,
-        #     'min': 1,
-        #     'q': 10
-        # },
-        # 'kinematic_scale': {
-        #     'values': [10, 100, 1000]
-        # },
-        # 'max_kin_weight': {
-        #     'values': [1, 10]
-        # }
-        # 'inference_returns': {
-        #     'values': [0, -0.1, -0.2, -0.3, -0.5]
-        # }
-        # 'horizon': {
-        #     'values': [8, 32, 100]
-        # }
-        # 'train_kinematic_loss': {
-        #     'values': [True, False]
-        # },
-        # 'condition_indices': {
-        #     'values': [
-        #         [0], [0, 'random'], [0, -1], [0, 'random', -1]
-        #     ]
-        # }
         'dataset': {
             'values': [
-                'datasets.FrankaLinesPoseObstDense5',
-                'datasets.FrankaLinesPoseObstSparse5'
+                'datasets.FrankaLinesPoseObstDense3',
+                'datasets.FrankaLinesPoseObstSparse3'
             ]
         },
-        # 'dataset_val': {
-        #     'values': [
-        #         'datasets.FrankaLinesPoseObstDense3',
-        #         'datasets.FrankaLinesPoseObstSparse3'
-        #     ]
-        # }
 
     })
     sweep_config['parameters'] = parameters_dict
