@@ -11,10 +11,8 @@ planning and control. In this paper, we investigate how to
 leverage the generalization and conditional-sampling capabilities
 of DDPMs to generate complex paths for a robotic end effector.
 We show that training a DDPM with synthetical and low-quality
-demonstrations is sufficient for generating nontrivial paths reach-
-ing arbitrary targets and avoiding obstacles. Additionally, we
-investigate different strategies for conditional sampling combin-
-ing classifier-free and classifier-guided approaches. Eventually,
+demonstrations is sufficient for generating nontrivial paths reaching arbitrary targets and avoiding obstacles. Additionally, we
+investigate different strategies for conditional sampling combining classifier-free and classifier-guided approaches. Eventually,
 we deploy the DDPM in a receding-horizon control scheme
 to enhance its planning capabilities. The Denoising Diffusion
 Planner is experimentally validated through various experiments
