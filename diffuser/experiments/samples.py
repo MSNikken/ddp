@@ -180,6 +180,32 @@ inpaint_scns = {
         -3: {'pos': [0.35, 0.2, 0.45], 'rot': []},
         -4: {'pos': [0.35, 0.2, 0.45], 'rot': []},
         -5: {'pos': [0.35, 0.2, 0.45], 'rot': []}
+    },
+    'scn1_repeat2': {
+        0: {'pos': [0.4, -0.2, 0.35], 'rot': []},
+        -1: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -2: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+    },
+    'scn1_repeat5': {
+        0: {'pos': [0.4, -0.2, 0.35], 'rot': []},
+        -1: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -2: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -3: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -4: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -5: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+    },
+    'scn1_repeat10': {
+        0: {'pos': [0.4, -0.2, 0.35], 'rot': []},
+        -1: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -2: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -3: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -4: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -5: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -6: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -7: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -8: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -9: {'pos': [0.4, 0.2, 0.35], 'rot': []},
+        -10: {'pos': [0.4, 0.2, 0.35], 'rot': []},
     }
 
 }
@@ -250,7 +276,10 @@ def inpaint_scenarios(model, dataset, horizon, scns, device, inference_returns=N
             'b d -> (repeat b) d', repeat=n_samples,
         )
 
-        res = get_samples(model, dataset, conditions, returns, horizon, device, n_samples=n_samples,
+        # Compensate for multiple inpainting
+        horizon_adjusted = horizon + len(conditions.keys()) - 2
+        horizon_adjusted += (4 - horizon_adjusted % 4) % 4
+        res = get_samples(model, dataset, conditions, returns, horizon_adjusted, device, n_samples=n_samples,
                           unnorm=unnorm, return_diff=return_diff, guide=guide)
         results.append(res)
     return results
