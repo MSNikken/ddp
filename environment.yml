@@ -1,4 +1,4 @@
-name: decdiff
+name: ddp
 channels:
 - defaults
 - conda-forge
@@ -8,9 +8,9 @@ dependencies:
 - patchelf
 - pip:
     - -f https://download.pytorch.org/whl/torch_stable.html
-    - numpy
+    - numpy<1.20
     - gym==0.18.0
-    - mujoco-py==2.0.2.13
+    - mujoco-py
     - matplotlib==3.3.4
     - torch==1.9.1+cu111
     - typed-argument-parser
@@ -30,3 +30,4 @@ dependencies:
     - ml_logger==0.8.69 
     - jaynes==0.8.11 
     - params_proto==2.9.6
+    - pypose
