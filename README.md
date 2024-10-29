@@ -42,3 +42,16 @@ export CONFIG=/path/to/config
 # Acknowledgements
 
 This repo is an adaptation of the [Decision Diffuser repo](https://github.com/anuragajay/decision-diffuser/tree/main/code).
+
+
+# Cite
+If you use this code in your own work, please cite our paper:
+
+```bibtex
+@article{nikken2024denoising,
+  title={Denoising Diffusion Planner: Learning Complex Paths from Low-Quality Demonstrations},
+  author={Nikken, Michiel and Botteghi, Nicol{\`o}, and Roozing, Wesley and Califano, Federico},
+  journal={},
+  year={2024}
+}
+```
